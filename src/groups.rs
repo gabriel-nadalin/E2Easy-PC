@@ -24,6 +24,10 @@ pub trait Element<G: Group>: Clone + PartialEq + std::fmt::Debug {
         self.add(&other.inv())
     }
 
+    fn serialize(&self) -> Vec<u8>;
+
+    fn deserialize(bytes: Vec<u8>) -> Self;
+
     fn group(&self) -> G;
 }
 
