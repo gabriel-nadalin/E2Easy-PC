@@ -1,0 +1,49 @@
+def test(a):
+    b = pow(a, q, p)
+    if b == 1:
+        return 1
+    elif b == p-1:
+        return -1
+
+p = 0xBF4AAA250D7578E410D0DC2D68645146113D1CE9D9DD2D522BF403BF41405613
+q = 0x5FA5551286BABC7208686E16B43228A3089E8E74ECEE96A915FA01DFA0A02B09
+
+g = 0x68B4CE26FF2863D61FED0E0C8C43C96D788E120BC31BA0B9DF3AD3D99F1ACDDC
+w_0 = 0x18A78C12DC84D5C564ADE93923F1BA9CCBF05EF34BABAD5E7C86DAAA4F37C981
+t_0 = pow(g, w_0, p)
+print(hex(t_0))
+
+s_0 = 0x2BEE2559BDBEB43341D842E58A881C6EB3F4487A400F897AAA51D94892CE539C
+aa = pow(g, s_0, p)
+assert(aa == 0x0EC66C5A0CCA49750FE7581BBA1F708EA18631CCDD5EAD94716A7D5C57C1A2FB)
+c_bar = 0xA9464C409C4B65EE1CAB9AD4D751A2A471FB548FD857CEF7AF298BF5799BAA13
+c = 0x000000000000000000000000000000000000000000000000F1CED2C700C92221
+ab = pow(c_bar, -c, p)
+assert(ab == 0x3B0A7C2A6C0B3354E7725F01AAE1AD061B4BB08DEBC9C968F0C556FDD11D8829)
+t_0_prime = (aa * ab) % p
+print(hex(t_0_prime))
+
+r_bar = 0x06C4759913212D249DAAF2E61ADF5AF3179612FB7C919A7EEE67CCF4B2B8393A
+ac = (c * r_bar) % q
+assert(ac == 0x13469946E139DE6DDD2A59AC669661D1E803E986F463DC1C2DCAFE9E43968A1B)
+ad = pow(g, ac, p)
+assert(ad == 0xBED7B06DB45211E790E50E8F2DEA7AB8300D114EEC8A107A78C9AD88FB0D7A87)
+ae = pow(ad, -1, p)
+af = (aa * ae) % p
+assert(af == t_0)
+
+r_bar = 0x06C4759913212D249DAAF2E61ADF5AF3179612FB7C919A7EEE67CCF4B2B8393A
+assert(c_bar == pow(g, r_bar, p))
+
+ag = t_0 + t_0_prime
+ah = ag % p
+print(hex((-t_0)%p))
+print('t_0: ', test(t_0))
+print('t\'_0: ', test(t_0_prime))
+print('g: ', test(g))
+print('g^s_0: ', test(aa))
+print('g^(c*r_bar): ', test(ad))
+print('g^(-c*r_bar): ', test(ae))
+print('c_bar^-c: ', test(ab))
+print('c_bar: ', test(c_bar))
+assert(ab == ae) # Fails, because of "sign"

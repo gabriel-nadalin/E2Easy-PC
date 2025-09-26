@@ -23,7 +23,10 @@ pub fn ciphertext_to_number (list: [Ciphertext; N]) -> [(Number, Number); N] {
 }
 
 pub fn get_random(n: &NumberNZ) -> Option<Number> {
-    return Some(Number::random_mod(&mut OsRng, &n))
+//    return Some(Number::from_be_hex("5FA555BBCEDABC7208686E16B8019228A3089E8E74ECE6A915FA01DFA0A02B09"))
+    let a = Number::random_mod(&mut OsRng, &n);
+//    println!("rand = {:?}", a);
+    return Some(a)
 }
 
 pub fn get_generator(n: &ModNumberParams) -> Option<ModNumber> {
@@ -35,15 +38,14 @@ pub fn get_generator(n: &ModNumberParams) -> Option<ModNumber> {
         }
     }
     let g = ModNumber::new(&temp_g, *n); 
-    g.square();
-    return Some(g)
+    return Some(g.square())
 }
 
-pub fn safe_prime() -> Option<(ModNumberParams, Number)> {
+pub fn safe_prime() -> Option<(ModNumberParams, NumberNZ)> {
     let temp_p: BigUint = Generator::safe_prime(SIZE);
     let temp_q: BigUint = (&temp_p - 1u32) >> 1;
     let p = ModNumberParams::new_vartime(biguint_to_uint(&temp_p).to_odd().unwrap());
-    let q = biguint_to_uint(&temp_q);
+    let q = biguint_to_uint(&temp_q).to_nz().unwrap();
     return Some((p,q))
 }
 
@@ -54,9 +56,10 @@ pub fn hash<T: Hash>(t: T) -> Number {
 }
 
 pub fn prod(list: [ModNumber; N], modulo: ModNumberParams) -> ModNumber {
-    let result = ModNumber::new(&Number::ONE, modulo);
+    let mut result = ModNumber::new(&Number::ONE, modulo);
     for i in 0..N {
-        result.mul(&list[i]);
+        result = result.mul(&list[i]);
     }
-    result
+//    println!("result = {:?}", result.retrieve());
+    return result
 }

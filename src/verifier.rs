@@ -25,14 +25,12 @@ impl Verifier {
         for i in 0..N {
             u_list[i] = hash(((e_list[i].0.retrieve(), e_list[i].1.retrieve(), e_prime_list[i].0.retrieve(), e_prime_list[i].1.retrieve(), c_list[i].retrieve()), i));
         }
-        // println!("uv: {:?}", u_list);
 
         let c_bar = prod(c_list, self.p).mul(&prod(self.h_list, self.p).inv().unwrap());
-        let u = Number::ONE;
+        let mut u = Number::ONE;
         for i in 0..N {
-            u.mul_mod(&u_list[i], &self.q);
+            u = u.mul_mod(&u_list[i], &self.q);
         }
-        println!("uv: {:?}", u_list);
 
         let c_hat = c_hat_list[N-1].mul(&self.h_list[0].pow(&u).inv().unwrap());
         let c_tilde = prod(from_fn(|i| c_list[i].pow(&u_list[i])), self.p);
@@ -43,7 +41,6 @@ impl Verifier {
         let y = (ciphertext_to_number(e_list), ciphertext_to_number(e_prime_list), modnumber_to_number(c_list), modnumber_to_number(c_hat_list), pk.retrieve());
         let temp_t = (t.0.retrieve(), t.1.retrieve(), t.2.retrieve(), (t.3.0.retrieve(), t.3.1.retrieve()), modnumber_to_number(t.4));
         let c = hash((y, temp_t));
-        println!("cv: {:?}", c);
 
         let t_prime_0 = self.g.pow(&s.0).mul(&c_bar.pow(&c).inv().unwrap());
         let t_prime_1 = self.g.pow(&s.1).mul(&c_hat.pow(&c).inv().unwrap());
@@ -55,13 +52,18 @@ impl Verifier {
         for i in 0..N {
             t_hat_prime_list[i] = self.g.pow(&s.4[i]).mul(&c_hat_list[i].pow(&c).inv().unwrap()).mul(&(if i == 0 {self.h_list[0]} else {c_hat_list[i-1]}).pow(&s.5[i]));
         }
-        println!("t^[0] = {:?}", t_hat_prime_list[0]);
 
         let t_prime = (t_prime_0, t_prime_1, t_prime_2, (t_prime_3_0, t_prime_3_1), t_hat_prime_list);
+        /*
         let temp_t_prime = (t_prime_0.retrieve(), t_prime_1.retrieve(), t_prime_2.retrieve(), (t_prime_3_0.retrieve(), t_prime_3_1.retrieve()), modnumber_to_number(t_hat_prime_list));
-        // println!("s     = {:?}", s);
         println!("t     = {:?}", temp_t);
         println!("t'    = {:?}", temp_t_prime);
-        return t == t_prime // t_prime_1 and t_hat_prime_list are false...
+        println!("t.0: {:?}", temp_t.0 == temp_t_prime.0); 
+        println!("t.1: {:?}", temp_t.1 == temp_t_prime.1);
+        println!("t.2: {:?}", temp_t.2 == temp_t_prime.2);
+        println!("t.3: {:?}", temp_t.3 == temp_t_prime.3);
+        println!("t.4: {:?}", temp_t.4 == temp_t_prime.4);
+        */
+        return t == t_prime
     }
 }
