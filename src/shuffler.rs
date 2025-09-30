@@ -1,6 +1,6 @@
 use rand::random_range;
 use core::array::from_fn;
-use crate::{Ciphertext, Proof, N, Number, NumberNZ, ModNumber, ModNumberParams, utils::{get_random, prod, hash, modnumber_to_number, ciphertext_to_number}};
+use crate::{Ciphertext, Proof, N, Number, NumberNZ, ModNumber, ModNumberParams, utils::{get_exponent, prod, hash, modnumber_to_number, ciphertext_to_number}};
 
 pub struct Shuffler {
     p: ModNumberParams,
@@ -43,7 +43,7 @@ impl Shuffler {
         for i in 0..N {
             let (a, b) = e_list[i];
 
-            let r_prime = get_random(&self.q).unwrap();
+            let r_prime = get_exponent(&self.q).unwrap();
             let a_prime = a.mul(&self.pk.pow(&r_prime));
             let b_prime = b.mul(&self.g.pow(&r_prime));
             let e_prime = (a_prime, b_prime);
@@ -64,7 +64,7 @@ impl Shuffler {
         let mut c_list = [ModNumber::zero(self.p); N];
 
         for i in 0..N {
-            let r = get_random(&self.q).unwrap();
+            let r = get_exponent(&self.q).unwrap();
             let c = self.h_list[i].mul(&self.g.pow(&r));
             r_list[psi[i]] = r;
             c_list[psi[i]] = c;
@@ -78,7 +78,7 @@ impl Shuffler {
         let mut c_list = [ModNumber::zero(self.p); N];
 
         for i in 0..N {
-            let r = get_random(&self.q).unwrap();
+            let r = get_exponent(&self.q).unwrap();
             let c = self.g.pow(&r).mul(&(if i == 0 {c0} else {c_list[i-1]}).pow(&u_list[i]));
             r_list[i] = r;
             c_list[i] = c;
@@ -100,7 +100,7 @@ impl Shuffler {
 
         let mut r_bar = Number::ZERO;
         for i in 0..N {
-            r_bar = r_bar.add_mod(&r_list[i], &self.q);
+            r_bar = r_bar.add_mod(&(&r_list[i]).into(), &self.q);
         }
 
         let mut v_list = [Number::ZERO; N];
@@ -118,9 +118,9 @@ impl Shuffler {
             r_prime = r_prime.add_mod(&r_prime_list[i].mul_mod(&u_list[i], &self.q), &self.q);
         }
 
-        let w_list: [Number; 4] = from_fn(|_| get_random(&self.q).unwrap());
-        let w_hat_list: [Number; N] = from_fn(|_| get_random(&self.q).unwrap());
-        let w_prime_list: [Number; N] = from_fn(|_| get_random(&self.q).unwrap());
+        let w_list: [Number; 4] = from_fn(|_| get_exponent(&self.q).unwrap());
+        let w_hat_list: [Number; N] = from_fn(|_| get_exponent(&self.q).unwrap());
+        let w_prime_list: [Number; N] = from_fn(|_| get_exponent(&self.q).unwrap());
 
         let t0 = self.g.pow(&w_list[0]);
         let t1 = self.g.pow(&w_list[1]);

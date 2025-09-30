@@ -24,12 +24,12 @@ impl ElGamal {
     }
 
     pub fn keygen(&mut self) {
-        self.sk = get_random(&self.q).unwrap();
+        self.sk = get_exponent(&self.q).unwrap();
         self.pk = self.g.pow(&self.sk);
     }
 
     pub fn encrypt(&self, m: Number) -> Ciphertext {
-        let r = get_random(&self.q).unwrap();
+        let r = get_exponent(&self.q).unwrap();
         let c1 = ModNumber::new(&m, self.p).mul(&self.pk.pow(&r));
         let c2 = self.g.pow(&r);
         return (c1, c2)
