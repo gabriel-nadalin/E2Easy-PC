@@ -1,6 +1,8 @@
+use bincode::{config::standard, decode_from_slice, encode_to_vec};
+
 pub mod u32_mod;
 
-pub trait Scalar<G: Group>: Clone + PartialEq + std::fmt::Debug {
+pub trait Scalar<G: Group>: Clone + PartialEq + std::fmt::Debug + bincode::Encode + bincode::Decode<()> {
 
     fn add(&self, other: &Self) -> Self;
     fn sub(&self, other: &Self) -> Self;
@@ -9,7 +11,7 @@ pub trait Scalar<G: Group>: Clone + PartialEq + std::fmt::Debug {
     fn inv(&self) -> Self; // multiplicative inverse
 }
 
-pub trait Element<G: Group>: Clone + PartialEq + std::fmt::Debug {
+pub trait Element<G: Group>: Clone + PartialEq + std::fmt::Debug + bincode::Encode + bincode::Decode<()> {
 
     /// operacao generica do grupo
     fn add(&self, other: &Self) -> Self;
@@ -24,16 +26,16 @@ pub trait Element<G: Group>: Clone + PartialEq + std::fmt::Debug {
         self.add(&other.inv())
     }
 
-    fn serialize(&self) -> Vec<u8>;
-
-    fn deserialize(bytes: Vec<u8>) -> Self;
+    fn serialize(&self) -> Vec<u8> {
+        encode_to_vec(self, standard()).unwrap()
+    }
 
     fn group(&self) -> G;
 }
 
-pub trait Group: Clone + PartialEq + std::fmt::Debug {
+pub trait Group: Clone + PartialEq + std::fmt::Debug + bincode::Encode + bincode::Decode<()> {
     type Scalar: Scalar<Self>;
-    type Element: Element<Self>;
+    type Element: Element<Self> + bincode::Decode<()>;
 
     /// retorna o elemento identidade do grupo
     fn identity(&self) -> Self::Element;
@@ -50,5 +52,9 @@ pub trait Group: Clone + PartialEq + std::fmt::Debug {
 
     /// multiplica o gerador do grupo pelo escalar `scalar`
     fn mul_generator(&self, scalar: &Self::Scalar) -> Self::Element;
+
+    fn deserialize_to_element(&self, bytes: Vec<u8>) -> Self::Element {
+        decode_from_slice(bytes.as_slice(), standard()).unwrap().0
+    }
 }
 

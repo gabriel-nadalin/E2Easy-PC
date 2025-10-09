@@ -1,23 +1,24 @@
 use std::sync::Arc;
 
+use bincode::{Encode, Decode};
 use rand::random_range;
 
 use crate::groups::{Element, Group, Scalar};
 use crate::utils::{modmul, modexp, modinv};
 
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Debug, Encode, Decode)]
 pub struct U32ModScalar {
     pub value: u32,
     pub group: Arc<U32ModGroup>,
 }
 
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Debug, Encode, Decode)]
 pub struct U32ModElement {
     pub value: u32,
     pub group: Arc<U32ModGroup>,
 }
 
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Debug, Encode, Decode)]
 pub struct U32ModGroup {
     pub p: u32,
     pub q: u32,
@@ -91,6 +92,10 @@ impl Element<Arc<U32ModGroup>> for U32ModElement {
             group: self.group.clone(),
         }
     }
+
+    fn serialize(&self) -> Vec<u8> {
+        self.value.to_be_bytes().to_vec()
+    }
     
     fn group(&self) -> Arc<U32ModGroup> {
         self.group.clone()
@@ -139,6 +144,17 @@ impl Group for Arc<U32ModGroup> {
     fn mul_generator(&self, scalar: &Self::Scalar) -> Self::Element {
         U32ModElement {
             value: modexp(self.g, scalar.value, self.p),
+            group: self.clone(),
+        }
+    }
+
+    fn deserialize_to_element(&self, bytes: Vec<u8>) -> Self::Element {
+        let mut arr = [0; 4];
+        for (i, val) in bytes.into_iter().take(4).enumerate() {
+            arr[i] = val;
+        }
+        U32ModElement {
+            value: u32::from_be_bytes(arr),
             group: self.clone(),
         }
     }
