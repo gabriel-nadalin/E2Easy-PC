@@ -1,6 +1,6 @@
-use bincode::{config::standard, decode_from_slice, encode_to_vec};
-
 pub mod u32_mod;
+
+use bincode::{config::standard, decode_from_slice, encode_to_vec};
 
 pub trait Scalar<G: Group>: Clone + PartialEq + std::fmt::Debug + bincode::Encode + bincode::Decode<()> {
 
@@ -57,4 +57,3 @@ pub trait Group: Clone + PartialEq + std::fmt::Debug + bincode::Encode + bincode
         decode_from_slice(bytes.as_slice(), standard()).unwrap().0
     }
 }
-

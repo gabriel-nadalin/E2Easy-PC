@@ -52,15 +52,15 @@ impl<G: Group> E2Easy<G> {
 
         for vote in votes {
             let r = self.group.random_scalar();
-            let encoded = self.group.deserialize_to_element(vote.to_bytes());
-            let (c1, c2) = self.enc_keys.encrypt(&encoded, &r);
+            let encoded_vote = self.group.deserialize_to_element(vote.to_bytes());
+            let (c1, c2) = self.enc_keys.encrypt(&encoded_vote, &r);
 
-            let enc_vote = [c1.serialize(), c2.serialize()].concat();
+            let encrypted_vote = [c1.serialize(), c2.serialize()].concat();
 
             self.votes.push(vote);
             self.nonces.push(r);
             
-            to_hash.extend_from_slice(&enc_vote);
+            to_hash.extend_from_slice(&encrypted_vote);
         }
         
         self.tracking_code = TrackingCode(Sha256::digest(to_hash).to_vec());
