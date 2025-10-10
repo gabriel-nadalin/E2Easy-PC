@@ -8,8 +8,9 @@ pub mod groups;
 pub mod el_gamal;
 pub mod shuffler;
 pub mod verifier;
+pub mod io_helpers;
 
-pub const N: usize = 10;
+pub const N: usize = 500;
 
 type Ciphertext<G: Group> = (G::Element, G::Element);
 type Proof<G: Group> = ((G::Element, G::Element, G::Element, (G::Element, G::Element), [G::Element; N]), (G::Scalar, G::Scalar, G::Scalar, G::Scalar, [G::Scalar; N], [G::Scalar; N]), [G::Element; N], [G::Element; N]);
