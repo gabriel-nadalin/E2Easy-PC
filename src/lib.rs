@@ -1,9 +1,9 @@
 pub mod utils;
-pub mod traits;
 pub mod groups;
 pub mod el_gamal;
 pub mod shuffler;
 pub mod verifier;
+pub mod io_helpers;
 
 pub const N: usize = 500;
 

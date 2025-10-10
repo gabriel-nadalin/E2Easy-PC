@@ -1,4 +1,5 @@
 use std::io::{self, Write};
+use mixnet_rust::io_helpers::request_user_input;
 
 const CHALLENGE: &str = "2";
 const CAST: &str = "1";
@@ -43,10 +44,3 @@ fn main () {
     println!("--------- Urna eletrônica encerrada ------------\n\n");
 }
 
-fn request_user_input(prompt: &str) -> String {
-    print!("{}", prompt);
-    io::stdout().flush().unwrap();
-    let mut input = String::new();
-    io::stdin().read_line(&mut input).expect("Error reading input");
-    input.trim().to_string()
-}
