@@ -43,7 +43,6 @@ impl<G: Group> E2Easy<G> {
         todo!()
     }
 
-    // implementacao considerando que os votos ja estao codificados para um elemento do grupo criptografico
     pub fn vote(&mut self, votes: Vec<Vote>) -> (TrackingCode, String) {
         self.timestamp = Utc::now().to_rfc3339();
 
