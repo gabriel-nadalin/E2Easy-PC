@@ -1,3 +1,4 @@
+use std::fmt;
 use std::sync::Arc;
 
 use bincode::{Encode, Decode};
@@ -6,13 +7,13 @@ use rand::random_range;
 use crate::groups::{Element, Group, Scalar};
 use crate::utils::{modmul, modexp, modinv};
 
-#[derive(Clone, PartialEq, Debug, Encode, Decode)]
+#[derive(Clone, PartialEq, Encode, Decode)]
 pub struct U32ModScalar {
     pub value: u32,
     pub group: Arc<U32ModGroup>,
 }
 
-#[derive(Clone, PartialEq, Debug, Encode, Decode)]
+#[derive(Clone, PartialEq, Encode, Decode)]
 pub struct U32ModElement {
     pub value: u32,
     pub group: Arc<U32ModGroup>,
@@ -25,7 +26,7 @@ pub struct U32ModGroup {
     pub g: u32,
 }
 
-impl Scalar<Arc<U32ModGroup>> for U32ModScalar {
+impl Scalar<U32ModGroup> for U32ModScalar {
 
     fn add(&self, other: &Self) -> Self {
         U32ModScalar {
@@ -65,7 +66,7 @@ impl Scalar<Arc<U32ModGroup>> for U32ModScalar {
     }
 }
 
-impl Element<Arc<U32ModGroup>> for U32ModElement {
+impl Element<U32ModGroup> for U32ModElement {
 
     // aqui, atua como operador entre dois elementos de um grupo multiplicativo (Z_p*), por isso multiplicacao e nao adicao
     fn add(&self, other: &Self) -> Self {
@@ -77,7 +78,7 @@ impl Element<Arc<U32ModGroup>> for U32ModElement {
     }
 
     // pelo mesmo motivo da funcao `add()`, utiliza exp ao inves de mul
-    fn mul_scalar(&self, scalar: &<Arc<U32ModGroup> as Group>::Scalar) -> Self {
+    fn mul_scalar(&self, scalar: &<U32ModGroup as Group>::Scalar) -> Self {
         U32ModElement {
             value: modexp(self.value, scalar.value, self.group.p),
             group: self.group.clone(),
@@ -97,54 +98,54 @@ impl Element<Arc<U32ModGroup>> for U32ModElement {
         self.value.to_be_bytes().to_vec()
     }
     
-    fn group(&self) -> Arc<U32ModGroup> {
-        self.group.clone()
+    fn group(&self) -> U32ModGroup {
+        (*self.group).clone()
     }
 }
 
-impl Group for Arc<U32ModGroup> {
+impl Group for U32ModGroup {
     type Element = U32ModElement;
     type Scalar = U32ModScalar;
 
     fn identity(&self) -> Self::Element {
         U32ModElement {
             value: 1,
-            group: self.clone(),
+            group: Arc::new(self.clone()),
         }
     }
 
     fn zero(&self) -> Self::Scalar {
         U32ModScalar {
             value: 0,
-            group: self.clone(),
+            group: Arc::new(self.clone()),
         }
     }
 
     fn one(&self) -> Self::Scalar {
         U32ModScalar {
             value: 1,
-            group: self.clone(),
+            group: Arc::new(self.clone()),
         }
     }
 
     fn random_element(&self) -> Self::Element {
         U32ModElement {
             value: random_range(0..self.p),
-            group: self.clone(),
+            group: Arc::new(self.clone()),
         }
     }
 
     fn random_scalar(&self) -> Self::Scalar {
         U32ModScalar {
             value: random_range(0..self.q),
-            group: self.clone(),
+            group: Arc::new(self.clone()),
         }
     }
     
     fn mul_generator(&self, scalar: &Self::Scalar) -> Self::Element {
         U32ModElement {
             value: modexp(self.g, scalar.value, self.p),
-            group: self.clone(),
+            group: Arc::new(self.clone()),
         }
     }
 
@@ -154,8 +155,19 @@ impl Group for Arc<U32ModGroup> {
             arr[i] = val;
         }
         U32ModElement {
-            value: u32::from_be_bytes(arr),
-            group: self.clone(),
+            value: u32::from_be_bytes(arr) % self.p,
+            group: Arc::new(self.clone()),
+        }
+    }
+
+    fn deserialize_to_scalar(&self, bytes: Vec<u8>) -> Self::Scalar {
+        let mut arr = [0; 4];
+        for (i, val) in bytes.into_iter().take(4).enumerate() {
+            arr[i] = val;
+        }
+        U32ModScalar {
+            value: u32::from_be_bytes(arr) % self.q,
+            group: Arc::new(self.clone()),
         }
     }
 }
@@ -166,17 +178,31 @@ impl U32ModGroup {
         Arc::new(U32ModGroup { p, q, g })
     }
 
-    pub fn element_from_u32(self: &Arc<Self>, e: u32) -> U32ModElement {
+    pub fn element_from_u32(&self, e: u32) -> U32ModElement {
         U32ModElement {
             value: e,
-            group: self.clone()
+            group: Arc::new(self.clone())
         }
     }
 
-    pub fn scalar_from_u32(self: &Arc<Self>, s: u32) -> U32ModScalar {
+    pub fn scalar_from_u32(&self, s: u32) -> U32ModScalar {
         U32ModScalar {
             value: s,
-            group: self.clone()
+            group: Arc::new(self.clone())
         }
+    }
+}
+
+impl fmt::Debug for U32ModElement {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // e.g. show a short structured debug
+        write!(f, "{}", self.value)
+    }
+}
+
+impl fmt::Debug for U32ModScalar {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // choose what you want printed — here we print only the numeric value
+        write!(f, "{}", self.value)
     }
 }

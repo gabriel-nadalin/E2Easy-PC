@@ -1,23 +1,21 @@
-use crate::{utils::{hash, modexp, modinv, modmul, prod}, Ciphertext, Proof, N};
+use crate::{groups::{Element, Group, Scalar}, keys::PublicKey, Ciphertext, Proof, N};
 use rand::random_range;
 use core::array::from_fn;
+use std::sync::Arc;
+use sha2::{Digest, Sha256};
 
-pub struct Shuffler {
-    p: u32,
-    q: u32,
-    g: u32,
-    h_list: [u32; N],
-    pk: u32
+pub struct Shuffler<G: Group> {
+    group: Arc<G>,
+    h_list: [G::Element; N],
+    pk: PublicKey<G>,
 }
 
-impl Shuffler {
-    pub fn new(p: u32, q: u32, g: u32, h_list: [u32; N], pk: u32) -> Self {
+impl<G: Group> Shuffler<G> {
+    pub fn new(group: Arc<G>, h_list: [G::Element; N], pk: PublicKey<G>) -> Self {
         Self {
-            p,
-            q,
-            g,
+            group,
             h_list,
-            pk
+            pk,
         }
     }
 
@@ -31,207 +29,155 @@ impl Shuffler {
             i_aux[k] = i_aux[i];
         }
 
-        // println!("psi = {:?}", psi);
-        // psi = [2, 0, 1];
-
         return psi
     }
 
-    pub fn gen_shuffle(&self, e_list: [Ciphertext; N]) -> ([Ciphertext; N], [u32; N], [usize; N]) {
-        let mut e_prime_list = [(0, 0); N];
-        let mut e_prime_tmp = [(0, 0); N];
-        let mut r_prime_list = [0; N];
+    pub fn gen_shuffle(&self, e_list: [Ciphertext<G>; N]) -> ([Ciphertext<G>; N], [G::Scalar; N], [usize; N]) {
+        let mut e_prime_list = from_fn(|_| Ciphertext(self.group.identity(), self.group.identity()));
+        let mut e_prime_tmp: [Ciphertext<G>; N] = from_fn(|_| Ciphertext(self.group.identity(), self.group.identity()));
+        let mut r_prime_list = from_fn(|_| self.group.zero());
         let psi = Self::gen_permutation();
 
         for i in 0..N {
-            let (a, b) = e_list[i];
+            let Ciphertext(a, b) = &e_list[i];
 
-            let r_prime = random_range(0..self.q);
-            let a_prime = modmul(
-                a,
-                modexp(self.pk, r_prime, self.p),
-                self.p
-            );
-            let b_prime = modmul(
-                b,
-                modexp(self.g, r_prime, self.p),
-                self.p
-            );
-            let e_prime = (a_prime, b_prime);
+            let r_prime = self.group.random_scalar();
+            let a_prime = a.add(&self.pk.element.mul_scalar(&r_prime));
+            let b_prime = b.add(&self.group.mul_generator(&r_prime));
+            let e_prime = Ciphertext(a_prime, b_prime);
 
             e_prime_tmp[i] = e_prime;
             r_prime_list[i] = r_prime;
         }
 
         for i in 0..N {
-            e_prime_list[i] = e_prime_tmp[psi[i]];
+            e_prime_list[i] = e_prime_tmp[psi[i]].clone();
         }
-
-        
-        // println!("e_prime_list = {:?}", e_prime_list);
-        // println!("r_prime_list = {:?}", r_prime_list);
-        // e_prime_list = [(1578266218, 1916620270), (360773426, 1178012281), (2058523096, 973473543)];
-        // r_prime_list = [516560446, 500833335, 910637767];
 
         return (e_prime_list, r_prime_list, psi)
     }
 
-    pub fn gen_commitment(&self, psi: [usize; N]) -> ([u32; N], [u32; N]) {
-        let mut r_list = [0; N];
-        let mut c_list = [0; N];
+    pub fn gen_commitment(&self, psi: [usize; N]) -> ([G::Element; N], [G::Scalar; N]) {
+        let mut r_list = from_fn(|_| self.group.zero());
+        let mut c_list = from_fn(|_| self.group.identity());
 
         for i in 0..N {
-            let r = random_range(0..self.q);
-            let c = modmul(
-                modexp(self.g, r, self.p),
-                self.h_list[i],
-                self.p
-            );
+            let r = self.group.random_scalar();
+            let c = self.group.mul_generator(&r).add(&self.h_list[i]);
+
             r_list[psi[i]] = r;
             c_list[psi[i]] = c;
         }
-
-        // println!("r_list = {:?}", r_list);
-        // println!("c_list = {:?}", c_list);
-        // r_list = [110642671, 387776617, 582817700];
-        // c_list = [1266380428, 988165380, 984017313];
         
         return (c_list, r_list)
     }
 
-    pub fn gen_commitment_chain(&self, c0: u32, u_list: [u32; N]) -> ([u32; N], [u32; N]) {
-        let mut r_list = [0; N];
-        let mut c_list = [0; N];
+    pub fn gen_commitment_chain(&self, c0: &G::Element, u_list: &[G::Scalar; N]) -> ([G::Element; N], [G::Scalar; N]) {
+        let mut r_list = from_fn(|_| self.group.zero());
+        let mut c_list = from_fn(|_| self.group.identity());
 
         for i in 0..N {
-            let r = random_range(0..self.q);
-            let c = modmul(
-                modexp(self.g, r, self.p),
-                modexp(if i == 0 {c0} else {c_list[i-1]}, u_list[i], self.p),
-                self.p
-            );
+            let r = self.group.random_scalar();
+            let c = self.group.mul_generator(&r).add(&(if i == 0 {c0.clone()} else {c_list[i-1].clone()}).mul_scalar(&u_list[i]));
+
             r_list[i] = r;
             c_list[i] = c;
         }
-
-        // println!("r_list = {:?}", r_list);
-        // println!("c_list = {:?}", c_list);
-        // r_list = [943942851, 295173641, 177345215];
-        // c_list = [885028112, 247338767, 1093213663];
 
         return (c_list, r_list)
     }
 
     pub fn gen_proof(
         &self,
-        e_list: [Ciphertext; N],
-        e_prime_list: [Ciphertext; N],
-        r_prime_list: [u32; N],
+        e_list: [Ciphertext<G>; N],
+        e_prime_list: [Ciphertext<G>; N],
+        r_prime_list: [G::Scalar; N],
         psi: [usize; N]
-    ) -> Proof {
+    ) -> Proof<G> {
         let (c_list, r_list) = self.gen_commitment(psi);
-        let mut u_list = [0; N];
+        let mut u_list: [<G as Group>::Scalar; N] = from_fn(|_| self.group.zero());
 
         for i in 0..N {
-            u_list[i] = hash(((e_list, e_prime_list, c_list), i), self.q);
+            // IMPORTANTE
+            // TODO: definir forma canonica de serializacao para hash com formato consistente
+            u_list[i] = self.group.deserialize_to_scalar(Sha256::digest(format!("(({:?},{:?},{:?}),{:?})", e_list, e_prime_list, c_list, i).replace(" ", "").as_bytes()).to_vec());
         }
-        // println!("us: {:?}", u_list);
-        let u_prime_list: [u32; N] = from_fn(|i| u_list[psi[i]]);
 
-        let (c_hat_list, r_hat_list) = self.gen_commitment_chain(self.h_list[0], u_prime_list);
+        let u_prime_list = from_fn(|i| u_list[psi[i]].clone());
 
-        let mut r_bar = 0;
+        let (c_hat_list, r_hat_list) = self.gen_commitment_chain(&self.h_list[0], &u_prime_list);
+
+        let mut r_bar = self.group.zero();
         for i in 0..N {
-            r_bar = (r_bar + r_list[i]) % self.q;
+            r_bar = r_bar.add(&r_list[i]);
         }
 
-        let mut v_list = [0; N];
-        v_list[N - 1] = 1;
+        let mut v_list: [<G as Group>::Scalar; N] = from_fn(|_| self.group.zero());
+        v_list[N - 1] = self.group.one();
         for i in (0..N-1).rev() {
-            v_list[i] = modmul(u_prime_list[i+1], v_list[i+1], self.q);
+            v_list[i] = u_prime_list[i+1].mul(&v_list[i+1]);
         }
 
-        let mut r_hat = 0;
-        let mut r_tilde = 0;
-        let mut r_prime = 0;
+        let mut r_hat = self.group.zero();
+        let mut r_tilde = self.group.zero();
+        let mut r_prime = self.group.zero();
         for i in 0..N {
-            r_hat = (r_hat + modmul(r_hat_list[i], v_list[i], self.q)) % self.q;
-            r_tilde = (r_tilde + modmul(r_list[i], u_list[i], self.q)) % self.q;
-            r_prime = (r_prime + modmul(r_prime_list[i], u_list[i], self.q)) % self.q;
+            r_hat = r_hat.add(&r_hat_list[i].mul(&v_list[i]));
+            r_tilde = r_tilde.add(&r_list[i].mul(&u_list[i]));
+            r_prime = r_prime.add(&r_prime_list[i].mul(&u_list[i]));
         }
 
-        let w_list: [u32; 4] = from_fn(|_| random_range(0..self.q));
-        let w_hat_list: [u32; N] = from_fn(|_| random_range(0..self.q));
-        let w_prime_list: [u32; N] = from_fn(|_| random_range(0..self.q));
+        let w_list: [G::Scalar; 4] = from_fn(|_| self.group.random_scalar());
+        let w_hat_list: [G::Scalar; N] = from_fn(|_| self.group.random_scalar());
+        let w_prime_list: [G::Scalar; N] = from_fn(|_| self.group.random_scalar());
 
-        // println!("w_list = {:?}", w_list);
-        // println!("w_hat_list = {:?}", w_hat_list);
-        // println!("w_prime_list = {:?}", w_prime_list);
-        // let w_list = [444114685, 983386847, 837519233, 396362824];
-        // let w_hat_list = [150625670, 704677671, 787117332];
-        // let w_prime_list = [302079174, 251299983, 1020180444];
+        let t0 = self.group.mul_generator(&w_list[0]);
+        let t1 = self.group.mul_generator(&w_list[1]);
+        let t2 = self.group.mul_generator(&w_list[2]).add(
+            &self.h_list
+                .iter()
+                .zip(w_prime_list.iter())
+                .map(|(h, w_prime)| h.mul_scalar(w_prime))   // each h_i^{w'_i}
+                .fold(self.group.identity(), |acc, x| acc.add(&x))
+        );
+        let t3_0 = self.pk.element.mul_scalar(&w_list[3]).inv().add(
+            &e_prime_list
+                .iter()
+                .zip(w_prime_list.iter())
+                .map(|(e_prime, w_prime)| e_prime.0.mul_scalar(w_prime))
+                .fold(self.group.identity(), |acc, x| acc.add(&x))
+        );
+        let t3_1 = self.group.mul_generator(&w_list[3]).inv().add(
+            &e_prime_list
+                .iter()
+                .zip(w_prime_list.iter())
+                .map(|(e_prime, w_prime)| e_prime.1.mul_scalar(w_prime))
+                .fold(self.group.identity(), |acc, x| acc.add(&x))
+        );
 
-        let t0 = modexp(self.g, w_list[0], self.p);
-        let t1 = modexp(self.g, w_list[1], self.p);
-        let t2 = modmul(
-            modexp(self.g, w_list[2], self.p),
-            prod(
-                from_fn(|i| modexp(self.h_list[i], w_prime_list[i], self.p)),
-                self.p
-            ), self.p
-        );
-        let t3_0 = modmul(
-            modinv(
-                modexp(self.pk, w_list[3], self.p),
-                self.p
-            ).unwrap(),
-            prod(
-                from_fn(|i| modexp(e_prime_list[i].0, w_prime_list[i], self.p)),
-                self.p
-            ),
-            self.p
-        );
-        let t3_1 = modmul(
-            modinv(
-                modexp(self.g, w_list[3], self.p),
-                self.p
-            ).unwrap(),
-            prod(
-                from_fn(|i| modexp(e_prime_list[i].1, w_prime_list[i], self.p)),
-                self.p
-            ),
-            self.p
-        );
-        // println!("teste: {}-{}-{:?}-{:?}", self.g, w_list[3], e_prime_list, w_prime_list);
-
-        let mut t_hat_list = [0; N];
+        let mut t_hat_list = from_fn(|_| self.group.identity());
         for i in 0..N {
-            t_hat_list[i] = modmul(
-                modexp(self.g, w_hat_list[i], self.p),
-                modexp(if i == 0 {self.h_list[0]} else {c_hat_list[i-1]}, w_prime_list[i], self.p),
-                self.p
-            );
+            t_hat_list[i] = self.group.mul_generator(&w_hat_list[i]).add(&(if i == 0 {self.h_list[0].clone()} else {c_hat_list[i-1].clone()}).mul_scalar(&w_prime_list[i]));
         }
 
-        let y = (e_list, e_prime_list, c_list, c_hat_list, self.pk);
+        let y = (e_list, e_prime_list, c_list.clone(), c_hat_list.clone(), self.pk.element.clone());
         let t = (t0, t1, t2, (t3_0, t3_1), t_hat_list);
-        let c = hash((y, t), self.q);
-        // println!("cs: {:?}", c);
+        // IMPORTANTE
+        // TODO: definir forma canonica de serializacao para hash com formato consistente
+        let c = self.group.deserialize_to_scalar(Sha256::digest(format!("({:?},{:?})", y, t).replace(" ", "").as_bytes()).to_vec());
 
-        let s0 = (w_list[0] + modmul(c, r_bar, self.q)) % self.q;
-        let s1 = (w_list[1] + modmul(c, r_hat, self.q)) % self.q;
-        let s2 = (w_list[2] + modmul(c, r_tilde, self.q)) % self.q;
-        let s3 = (w_list[3] + modmul(c, r_prime, self.q)) % self.q;
+        let s0 = w_list[0].add(&c.mul(&r_bar));
+        let s1 = w_list[1].add(&c.mul(&r_hat));
+        let s2 = w_list[2].add(&c.mul(&r_tilde));
+        let s3 = w_list[3].add(&c.mul(&r_prime));
 
-        let mut s_hat_list = [0; N];
-        let mut s_prime_list = [0; N];
+        let mut s_hat_list = from_fn(|_| self.group.zero());
+        let mut s_prime_list = from_fn(|_| self.group.zero());
         for i in 0..N {
-            s_hat_list[i] = (w_hat_list[i] + modmul(c, r_hat_list[i], self.q)) % self.q;
-            s_prime_list[i] = (w_prime_list[i] + modmul(c, u_prime_list[i], self.q)) % self.q;
+            s_hat_list[i] = w_hat_list[i].add(&c.mul(&r_hat_list[i]));
+            s_prime_list[i] = w_prime_list[i].add(&c.mul(&u_prime_list[i]));
         }
         let s = (s0, s1, s2, s3, s_hat_list, s_prime_list);
-        // println!("ts    = {:?}", t);
-        // println!("ss    = {:?}", s);
-        return (t, s, c_list, c_hat_list)
+        return Proof(t, s, c_list, c_hat_list)
     }
 }

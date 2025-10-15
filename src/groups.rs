@@ -56,4 +56,8 @@ pub trait Group: Clone + PartialEq + std::fmt::Debug + bincode::Encode + bincode
     fn deserialize_to_element(&self, bytes: Vec<u8>) -> Self::Element {
         decode_from_slice(bytes.as_slice(), standard()).unwrap().0
     }
+
+    fn deserialize_to_scalar(&self, bytes: Vec<u8>) -> Self::Scalar {
+        decode_from_slice(bytes.as_slice(), standard()).unwrap().0
+    }
 }

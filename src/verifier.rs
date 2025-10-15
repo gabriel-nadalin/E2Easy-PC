@@ -1,157 +1,82 @@
-use crate::{utils::*, *};
+use crate::{groups::{Element, Scalar}, keys::PublicKey, utils::*, *};
 use core::array::from_fn;
+use std::sync::Arc;
+use sha2::{Digest, Sha256};
 
-pub struct Verifier {
-    p: u32,
-    q: u32,
-    g: u32,
-    h_list: [u32; N]
+pub struct Verifier<G: Group> {
+    group: Arc<G>,
+    h_list: [G::Element; N],
 }
 
-impl Verifier {
-    pub fn new(p: u32, q: u32, g: u32, h_list: [u32; N]) -> Self {
+impl<G: Group> Verifier<G> {
+    pub fn new(group: Arc<G>, h_list: [G::Element; N]) -> Self {
         Self {
-            p,
-            q,
-            g,
-            h_list
+            group,
+            h_list,
         }
     }
 
-    pub fn check_proof(&self, pi: Proof, e_list: [Ciphertext; N], e_prime_list: [Ciphertext; N], pk: u32) -> bool {
-        let (t, s, c_list, c_hat_list) = pi;
+    pub fn check_proof(&self, pi: Proof<G>, e_list: [Ciphertext<G>; N], e_prime_list: [Ciphertext<G>; N], pk: PublicKey<G>) -> bool {
+        let Proof(t, s, c_list, c_hat_list) = pi;
 
-        let mut u_list = [0; N];
+        let mut u_list: [<G as Group>::Scalar; N] = from_fn(|_| self.group.zero());
         for i in 0..N {
-            u_list[i] = hash(((e_list, e_prime_list, c_list), i), self.q);
+            // IMPORTANTE
+            // TODO: definir forma canonica de serializacao para hash com formato consistente
+            u_list[i] = self.group.deserialize_to_scalar(Sha256::digest(format!("(({:?},{:?},{:?}),{:?})", e_list, e_prime_list, c_list, i).replace(" ", "").as_bytes()).to_vec());
         }
-        // println!("uv: {:?}", u_list);
 
-        let c_bar = modmul(
-            prod(c_list, self.p),
-            modinv(prod(self.h_list, self.p), self.p).unwrap(),
-            self.p
-        );
-        let u = prod(u_list, self.q);
+        let c_bar = c_list.iter().fold(self.group.identity(), |acc, x| acc.add(x))
+            .add(&self.h_list.iter().fold(self.group.identity(), |acc, x| acc.add(x)).inv());
+        let u = u_list.iter().fold(self.group.one(), |acc, x| acc.mul(x));
 
-        let c_hat = modmul(
-            c_hat_list[N-1],
-            modinv(
-                modexp(self.h_list[0], u, self.p),
-                self.p
-            ).unwrap(),
-            self.p
-        );
+        let c_hat = c_hat_list[N-1].add(&self.h_list[0].mul_scalar(&u).inv());
+        let c_tilde = c_list.iter()
+            .zip(u_list.iter())
+            .map(|(c, u)| c.mul_scalar(u))
+            .fold(self.group.identity(), |acc, x| acc.add(&x));
+        let a_prime = e_list.iter()
+            .zip(u_list.iter())
+            .map(|(e, u)| e.0.mul_scalar(u))
+            .fold(self.group.identity(), |acc, x| acc.add(&x));
+        let b_prime = e_list.iter()
+            .zip(u_list.iter())
+            .map(|(e, u)| e.1.mul_scalar(u))
+            .fold(self.group.identity(), |acc, x| acc.add(&x));
 
-        let c_tilde = prod(
-            from_fn(|i| modexp(c_list[i], u_list[i], self.p)),
-            self.p
-        );
-        let a_prime = prod(
-            from_fn(|i| modexp(e_list[i].0, u_list[i], self.p)),
-            self.p
-        );
-        let b_prime = prod(
-            from_fn(|i| modexp(e_list[i].1, u_list[i], self.p)),
-            self.p
-        );
+        let y = (e_list, e_prime_list.clone(), c_list, c_hat_list.clone(), pk.element.clone());
+        // IMPORTANTE
+        // TODO: definir forma canonica de serializacao para hash com formato consistente
+        let c = self.group.deserialize_to_scalar(Sha256::digest(format!("({:?}, {:?})", y, t).replace(" ", "").as_bytes()).to_vec());
 
-        let y = (e_list, e_prime_list, c_list, c_hat_list, pk);
-        let c = hash((y, t), self.q);
-        // println!("cv: {:?}", c);
-
-        let t_prime_0 = modmul(
-            modinv(
-                modexp(c_bar, c, self.p),
-                self.p
-            ).unwrap(),
-            modexp(self.g, s.0, self.p),
-            self.p
+        let t_prime_0 = c_bar.mul_scalar(&c).inv().add(&self.group.mul_generator(&s.0));
+        let t_prime_1 = c_hat.mul_scalar(&c).inv().add(&self.group.mul_generator(&s.1));
+        let t_prime_2 = c_tilde.mul_scalar(&c).inv().add(&self.group.mul_generator(&s.2)).add(
+            &self.h_list.iter()
+            .zip(s.5.iter())
+            .map(|(h, s_prime)| h.mul_scalar(s_prime))
+            .fold(self.group.identity(), |acc, x| acc.add(&x))
         );
-        let t_prime_1 = modmul(
-            modinv(
-                modexp(c_hat, c, self.p),
-                self.p
-            ).unwrap(),
-            modexp(self.g, s.1, self.p),
-            self.p
+        let t_prime_3_0 = a_prime.mul_scalar(&c).inv().add(&pk.element.mul_scalar(&s.3).inv()).add(
+            &e_prime_list.iter()
+            .zip(s.5.iter())
+            .map(|(e, s_prime)| e.0.mul_scalar(s_prime))
+            .fold(self.group.identity(), |acc, x| acc.add(&x))
         );
-        let t_prime_2 = modmul(
-            modmul(
-                modinv(
-                    modexp(c_tilde, c, self.p),
-                    self.p
-                ).unwrap(),
-                modexp(self.g, s.2, self.p),
-                self.p
-            ),
-            prod(
-                from_fn(|i| modexp(self.h_list[i], s.5[i], self.p)),
-                self.p
-            ),
-            self.p
-        );
-        let t_prime_3_0 = modmul(
-            modmul(
-                modinv(
-                    modexp(a_prime, c, self.p),
-                    self.p
-                ).unwrap(),
-                modinv(
-                    modexp(pk, s.3, self.p),
-                    self.p
-                ).unwrap(),
-                self.p
-            ),
-            prod(
-                from_fn(|i| modexp(e_prime_list[i].0, s.5[i], self.p)),
-                self.p
-            ),
-            self.p
-        );
-        let t_prime_3_1 = modmul(
-            modmul(
-                modinv(
-                    modexp(b_prime, c, self.p),
-                    self.p
-                ).unwrap(),
-                modinv(
-                    modexp(self.g, s.3, self.p),
-                    self.p
-                ).unwrap(),
-                self.p
-            ),
-            prod(
-                from_fn(|i| modexp(e_prime_list[i].1, s.5[i], self.p)),
-                self.p
-            ),
-            self.p
+        let t_prime_3_1 = b_prime.mul_scalar(&c).inv().add(&self.group.mul_generator(&s.3).inv()).add(
+            &e_prime_list.iter()
+            .zip(s.5.iter())
+            .map(|(e, s_prime)| e.1.mul_scalar(s_prime))
+            .fold(self.group.identity(), |acc, x| acc.add(&x))
         );
 
-        let mut t_hat_prime_list = [0; N];
+        let mut t_hat_prime_list = from_fn(|_| self.group.identity());
         for i in 0..N {
-            t_hat_prime_list[i] = modmul(
-                modmul(
-                    modinv(
-                        modexp(c_hat_list[i], c, self.p),
-                        self.p
-                    ).unwrap(),
-                    modexp(self.g, s.4[i], self.p),
-                    self.p
-                ),
-                modexp(
-                    if i == 0 {self.h_list[0]} else {c_hat_list[i-1]},
-                    s.5[i],
-                    self.p
-                ),
-                self.p
-            )
+            t_hat_prime_list[i] = c_hat_list[i].mul_scalar(&c).inv().add(&self.group.mul_generator(&s.4[i])).add(&(if i == 0 {&self.h_list[0]} else {&c_hat_list[i-1]}).mul_scalar(&s.5[i]));
         }
 
         let t_prime = (t_prime_0, t_prime_1, t_prime_2, (t_prime_3_0, t_prime_3_1), t_hat_prime_list);
-        // println!("s     = {:?}", s);
-        println!("t     = {:?}", t);
-        println!("t'    = {:?}", t_prime);
+        // println!("{:#?}", t_prime);
         return t == t_prime
     }
 }

@@ -1,11 +1,13 @@
+use std::sync::Arc;
+
 use chrono::Utc;
 
 use sha2::{Digest, Sha256};
 use ed25519_dalek::Signature;
-use crate::{groups::{Element, Group}, keys::{self, EncryptionKeys, SignatureKeys}, types::*};
+use crate::{groups::{Element, Group}, keys::{self, EncryptionKeys, SignatureKeys}, types::*, Ciphertext};
 
 pub struct E2Easy<G: Group> {
-    pub group: G,
+    pub group: Arc<G>,
     pub enc_keys: EncryptionKeys<G>,
     sig_keys: SignatureKeys,
     pub vote_table: VoteTable,
@@ -20,8 +22,8 @@ pub struct E2Easy<G: Group> {
 
 impl<G: Group> E2Easy<G> {
     // seria possivel combinar setup() e start() em new()?
-    pub fn new(group: G) -> Self {
-        let (enc_keys, sig_keys) = keys::keygen(&group);
+    pub fn new(group: Arc<G>) -> Self {
+        let (enc_keys, sig_keys) = keys::keygen(group.clone());
         Self {
             group,
             enc_keys,
@@ -52,7 +54,7 @@ impl<G: Group> E2Easy<G> {
         for vote in votes {
             let r = self.group.random_scalar();
             let encoded_vote = self.group.deserialize_to_element(vote.to_bytes());
-            let (c1, c2) = self.enc_keys.encrypt(&encoded_vote, &r);
+            let Ciphertext(c1, c2) = self.enc_keys.encrypt(&encoded_vote, &r);
 
             let encrypted_vote = [c1.serialize(), c2.serialize()].concat();
 

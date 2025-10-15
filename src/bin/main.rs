@@ -1,4 +1,5 @@
-use mixnet_rust::{el_gamal::ElGamal, shuffler::Shuffler, utils::*, verifier::Verifier, N};
+use mixnet_rust::{Ciphertext, groups::u32_mod::{U32ModGroup, U32ModElement}, keys, shuffler::Shuffler, utils::*, verifier::Verifier, N};
+use mixnet_rust::groups::Group;
 use rand::random_range;
 
 fn main() {
@@ -6,38 +7,45 @@ fn main() {
     let mut g = random_range(2..p-1);
     g = modexp(g, 2, p);
 
-    let mut el_gamal = ElGamal::new(p, q, g);
-    el_gamal.keygen();
+    let group = U32ModGroup::new(p, q, g);
 
-    let mut h_list: [u32; N] = [0; N];
-    for i in 0..N {
+    let (enc_keys, _sig_keys) = keys::keygen(group.clone());
+
+    let h_list: [U32ModElement; N] = core::array::from_fn(|_| {
         let mut h = random_range(2..p-1);
         h = modexp(h, 2, p);
-        h_list[i] = h;
-    }
+        group.element_from_u32(h)
+    });
 
-    let shuffler = Shuffler::new(p, q, g, h_list, el_gamal.pk());
+    let shuffler = Shuffler::new(group.clone(), h_list.clone(), enc_keys.pk.clone());
 
-    let plaintext_list: [u32; N] = core::array::from_fn(|i| modexp(i as u32 + 1, 2, p));
-    let ciphertext_list_1: [(u32, u32); N] = core::array::from_fn(|i| el_gamal.encrypt(plaintext_list[i]));
+    let plaintext_list: [U32ModElement; N] = core::array::from_fn(|i| {
+        let val = modexp(i as u32 + 1, 2, p);
+        group.element_from_u32(val)
+    });
+
+    let ciphertext_list_1: [Ciphertext<U32ModGroup>; N] = core::array::from_fn(|i| {
+        let r = group.random_scalar();
+        enc_keys.encrypt(&plaintext_list[i], &r)
+    });
     
     println!("plaintext: {:?}", plaintext_list);
     println!("ciphertext: {:?}", ciphertext_list_1);
 
-    let (ciphertext_list_2, random_list, psi) = shuffler.gen_shuffle(ciphertext_list_1);
+    let (ciphertext_list_2, random_list, psi) = shuffler.gen_shuffle(ciphertext_list_1.clone());
     let proof = shuffler.gen_proof(
-        ciphertext_list_1,
-        ciphertext_list_2,
-        random_list,
+        ciphertext_list_1.clone(),
+        ciphertext_list_2.clone(),
+        random_list.clone(),
         psi
     );
     println!("shuffled: {:?}", ciphertext_list_2);
     println!("proof: {:?}", proof);
 
-    let verifier = Verifier::new(p, q, g, h_list);
-    let result = verifier.check_proof(proof, ciphertext_list_1, ciphertext_list_2, el_gamal.pk());
+    let verifier = Verifier::new(group.clone(), h_list.clone());
+    let result = verifier.check_proof(proof, ciphertext_list_1, ciphertext_list_2.clone(), enc_keys.pk.clone());
     println!("result: {result}");
 
-    let decrypted_list: [u32; N] = core::array::from_fn(|i| el_gamal.decrypt(ciphertext_list_2[i]));
+    let decrypted_list: [u32; N] = core::array::from_fn(|i| enc_keys.sk.decrypt(&ciphertext_list_2[i].clone()).value);
     println!("shuffled & decrypted: {:?}", decrypted_list);
 }

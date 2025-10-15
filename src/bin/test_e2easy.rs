@@ -1,4 +1,4 @@
-use mixnet_rust::{e2easy::E2Easy, groups::{u32_mod::U32ModGroup, Element, Group}, types::{TrackingCode, Vote}, utils::{modexp, safe_prime}};
+use mixnet_rust::{e2easy::E2Easy, groups::{u32_mod::U32ModGroup, Element, Group}, types::{TrackingCode, Vote}, utils::{modexp, safe_prime}, Ciphertext};
 use rand::random_range;
 use sha2::{Digest, Sha256};
 
@@ -50,7 +50,7 @@ fn main() {
 
     for (vote, nonce) in votes.iter().zip(nonces) {
         let encoded = e2easy.group.deserialize_to_element(vote.to_bytes());
-        let (c1, c2) = e2easy.enc_keys.encrypt(&encoded, &nonce);
+        let Ciphertext(c1, c2) = e2easy.enc_keys.encrypt(&encoded, &nonce);
 
         let enc_vote = [c1.serialize(), c2.serialize()].concat();
         
@@ -121,7 +121,7 @@ fn main() {
 
     for (vote, nonce) in votes.iter().zip(nonces) {
         let encoded = e2easy.group.deserialize_to_element(vote.to_bytes());
-        let (c1, c2) = e2easy.enc_keys.encrypt(&encoded, &nonce);
+        let Ciphertext(c1, c2) = e2easy.enc_keys.encrypt(&encoded, &nonce);
 
         let enc_vote = [c1.serialize(), c2.serialize()].concat();
         
