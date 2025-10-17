@@ -14,14 +14,14 @@ fn main() {
     let h_list: [U32ModElement; N] = core::array::from_fn(|_| {
         let mut h = random_range(2..p-1);
         h = modexp(h, 2, p);
-        group.element_from_u32(h)
+        group.deserialize_to_element(h.to_be_bytes().to_vec())
     });
 
     let shuffler = Shuffler::new(group.clone(), h_list.clone(), enc_keys.pk.clone());
 
     let plaintext_list: [U32ModElement; N] = core::array::from_fn(|i| {
         let val = modexp(i as u32 + 1, 2, p);
-        group.element_from_u32(val)
+        group.deserialize_to_element(val.to_be_bytes().to_vec())
     });
 
     let ciphertext_list_1: [Ciphertext<U32ModGroup>; N] = core::array::from_fn(|i| {

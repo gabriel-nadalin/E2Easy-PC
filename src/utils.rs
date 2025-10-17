@@ -1,7 +1,4 @@
 use rand::random_range;
-use std::hash::{Hash, Hasher, DefaultHasher};
-
-use crate::{groups::Group, N};
 
 pub fn is_prime(n: u32) -> bool {
     if n <= 1 {
@@ -76,22 +73,4 @@ pub fn modexp(base: u32, mut exp: u32, modulo: u32) -> u32 {
         exp /= 2;
     }
     result as u32
-}
-
-pub fn hash<T: Hash>(t: T, modulo: u32) -> u32 {
-    let mut s = DefaultHasher::new();
-    t.hash(&mut s);
-    (s.finish() % modulo as u64) as u32
-}
-
-pub fn hash_to_scalar<G: Group>(msg: &str, group: &G) -> G::Scalar {
-    todo!()
-}
-
-pub fn prod(list: [u32; N], modulo: u32) -> u32 {
-    let mut result = 1;
-    for i in 0..N {
-        result = modmul(result, list[i], modulo);
-    }
-    result
 }

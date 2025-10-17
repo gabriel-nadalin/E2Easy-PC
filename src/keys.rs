@@ -1,5 +1,4 @@
 use std::sync::Arc;
-
 use rand08::rngs::OsRng;
 use ed25519_dalek::{Signature, SignatureError, Signer, SigningKey, Verifier, VerifyingKey};
 use crate::{groups::{Element, Group}, Ciphertext};

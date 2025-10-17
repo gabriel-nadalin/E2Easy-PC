@@ -1,4 +1,4 @@
-use crate::{groups::{Element, Group, Scalar}, keys::PublicKey, Ciphertext, Proof, N};
+use crate::{groups::{Element, Group, Scalar}, keys::PublicKey, Ciphertext, ShuffleProof, N};
 use rand::random_range;
 use core::array::from_fn;
 use std::sync::Arc;
@@ -93,7 +93,7 @@ impl<G: Group> Shuffler<G> {
         e_prime_list: [Ciphertext<G>; N],
         r_prime_list: [G::Scalar; N],
         psi: [usize; N]
-    ) -> Proof<G> {
+    ) -> ShuffleProof<G> {
         let (c_list, r_list) = self.gen_commitment(psi);
         let mut u_list: [<G as Group>::Scalar; N] = from_fn(|_| self.group.zero());
 
@@ -178,6 +178,6 @@ impl<G: Group> Shuffler<G> {
             s_prime_list[i] = w_prime_list[i].add(&c.mul(&u_prime_list[i]));
         }
         let s = (s0, s1, s2, s3, s_hat_list, s_prime_list);
-        return Proof(t, s, c_list, c_hat_list)
+        return ShuffleProof(t, s, c_list, c_hat_list)
     }
 }

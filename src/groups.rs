@@ -1,8 +1,6 @@
 pub mod u32_mod;
 
-use bincode::{config::standard, decode_from_slice, encode_to_vec};
-
-pub trait Scalar<G: Group>: Clone + PartialEq + std::fmt::Debug + bincode::Encode + bincode::Decode<()> {
+pub trait Scalar<G: Group>: Clone + PartialEq + std::fmt::Debug {
 
     fn add(&self, other: &Self) -> Self;
     fn sub(&self, other: &Self) -> Self;
@@ -11,7 +9,7 @@ pub trait Scalar<G: Group>: Clone + PartialEq + std::fmt::Debug + bincode::Encod
     fn inv(&self) -> Self; // multiplicative inverse
 }
 
-pub trait Element<G: Group>: Clone + PartialEq + std::fmt::Debug + bincode::Encode + bincode::Decode<()> {
+pub trait Element<G: Group>: Clone + PartialEq + std::fmt::Debug {
 
     /// operacao generica do grupo
     fn add(&self, other: &Self) -> Self;
@@ -26,16 +24,14 @@ pub trait Element<G: Group>: Clone + PartialEq + std::fmt::Debug + bincode::Enco
         self.add(&other.inv())
     }
 
-    fn serialize(&self) -> Vec<u8> {
-        encode_to_vec(self, standard()).unwrap()
-    }
+    fn serialize(&self) -> Vec<u8>;
 
     fn group(&self) -> G;
 }
 
-pub trait Group: Clone + PartialEq + std::fmt::Debug + bincode::Encode + bincode::Decode<()> {
+pub trait Group: Clone + PartialEq + std::fmt::Debug {
     type Scalar: Scalar<Self>;
-    type Element: Element<Self> + bincode::Decode<()>;
+    type Element: Element<Self>;
 
     /// retorna o elemento identidade do grupo
     fn identity(&self) -> Self::Element;
@@ -53,11 +49,7 @@ pub trait Group: Clone + PartialEq + std::fmt::Debug + bincode::Encode + bincode
     /// multiplica o gerador do grupo pelo escalar `scalar`
     fn mul_generator(&self, scalar: &Self::Scalar) -> Self::Element;
 
-    fn deserialize_to_element(&self, bytes: Vec<u8>) -> Self::Element {
-        decode_from_slice(bytes.as_slice(), standard()).unwrap().0
-    }
+    fn deserialize_to_element(&self, bytes: Vec<u8>) -> Self::Element;
 
-    fn deserialize_to_scalar(&self, bytes: Vec<u8>) -> Self::Scalar {
-        decode_from_slice(bytes.as_slice(), standard()).unwrap().0
-    }
+    fn deserialize_to_scalar(&self, bytes: Vec<u8>) -> Self::Scalar;
 }

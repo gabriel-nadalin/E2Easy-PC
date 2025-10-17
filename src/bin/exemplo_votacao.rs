@@ -1,10 +1,24 @@
 use std::io::{self, Write};
 use mixnet_rust::io_helpers::request_user_input;
 
+use mixnet_rust::{e2easy::E2Easy, groups::{u32_mod::U32ModGroup, Element}, types::Vote};
+
 const CHALLENGE: &str = "2";
 const CAST: &str = "1";
 fn main () {
     println!("\n\n--------- Iniciando urna eletronica... ------------");
+
+    // let (p, q) = safe_prime(2_u32.pow(31)).unwrap();
+    // let mut g = random_range(2..p-1);
+    // g = modexp(g, 2, p);
+
+    let (p, q, g) = (3864258863, 1932129431, 3051949095);
+
+    let group = U32ModGroup::new(p, q, g);
+
+    let mut e2easy = E2Easy::new(group);
+
+    println!("Chave pública de cifração: {}", hex::encode(e2easy.enc_keys.pk.element.serialize()));
 
     loop {
         let is_new_voter = request_user_input("\nReceber novo voto? (s/n): ");
@@ -12,28 +26,31 @@ fn main () {
             break;
         }
 
-        let vote1 = request_user_input("Por favor, digite seu voto para presidente: ");
+        let vote1 = request_user_input("Por favor, digite seu voto para presidente: ")
+            .parse::<u8>().unwrap();
         println!("Voto confirmado: {}", vote1);
 
-        let vote2 = request_user_input("Por favor, digite seu voto para governador: ");
+        let vote2 = request_user_input("Por favor, digite seu voto para governador: ")
+            .parse::<u8>().unwrap();
         println!("Voto confirmado: {}", vote2);
 
-        let tracking_code = "3e9893e18b881cc8ccf9b9d3117965266668e2bae96ff668c6a4ff8ca78078d4";
-        println!("\nObrigado. Aqui está o seu código de rastreio: {}", tracking_code);
+        let votes = vec![Vote{ contest: 0, choice: vote1}, Vote{ contest: 1, choice: vote2}];
+
+        let (tracking_code, timestamp) = e2easy.vote(votes);
+        println!("\nObrigado. Aqui está o seu código de rastreio: {}", hex::encode(tracking_code.0));
 
         let challenge_or_cast = request_user_input("Deseja (1) lançar o voto ou (2) desafiar a urna? ");
         if challenge_or_cast == CHALLENGE {
-            let previous_hash = "727676308869a6c86b8f7d3f8c924431d2f86e4723dc68ce36a58be88b1467de";
-            let nonce = "727676308869a6c86b8f7d3f8c924431d2f86e4723dc68ce36a58be88b1467de";
-            let timestamp = "2025-10-01 12:00:00";
+            let (previous_hash, _votes, nonces) = e2easy.challenge();
+
             println!("Aqui estão os dados para o desafio:");
-            println!("    hash anterior: {}", previous_hash);
-            println!("    nonce: {}", nonce);
+            println!("    hash anterior: {}", hex::encode(previous_hash.0));
+            println!("    nonce: {:?}", nonces);
             println!("    carimbo de tempo: {}", timestamp);
             println!("Voto descartado. Vote novamente.")
         } else {
-            let tc_signature = "3045022100dff1d77f2a671c5f462f7e1c5b3a8c4ab6b8f1b4e9d3e8e6c7f6a5f4d3c2b1a1022039c3b2a1f0e9d8c7b6a5f4e3d2c1b0a9f8e7d6c5b4a3b2c1d0e9f8e7d6c5b4a3";
-            println!("Aqui está a assinatura do seu código de rastreio:\n{}", tc_signature);
+            let tc_signature = e2easy.cast();
+            println!("Aqui está a assinatura do seu código de rastreio:\n{}", hex::encode(tc_signature.to_bytes()));
             println!("Voto lançado! Obrigado por votar.");
         }
     }

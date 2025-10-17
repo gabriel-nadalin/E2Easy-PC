@@ -1,4 +1,4 @@
-use crate::{groups::{Element, Scalar}, keys::PublicKey, utils::*, *};
+use crate::{groups::{Element, Scalar}, keys::PublicKey, *};
 use core::array::from_fn;
 use std::sync::Arc;
 use sha2::{Digest, Sha256};
@@ -16,8 +16,8 @@ impl<G: Group> Verifier<G> {
         }
     }
 
-    pub fn check_proof(&self, pi: Proof<G>, e_list: [Ciphertext<G>; N], e_prime_list: [Ciphertext<G>; N], pk: PublicKey<G>) -> bool {
-        let Proof(t, s, c_list, c_hat_list) = pi;
+    pub fn check_proof(&self, pi: ShuffleProof<G>, e_list: [Ciphertext<G>; N], e_prime_list: [Ciphertext<G>; N], pk: PublicKey<G>) -> bool {
+        let ShuffleProof(t, s, c_list, c_hat_list) = pi;
 
         let mut u_list: [<G as Group>::Scalar; N] = from_fn(|_| self.group.zero());
         for i in 0..N {

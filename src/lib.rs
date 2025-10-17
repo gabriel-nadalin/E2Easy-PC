@@ -23,9 +23,9 @@ impl<G: Group> fmt::Debug for Ciphertext<G> {
 }
 
 #[derive(Clone, PartialEq)]
-pub struct Proof<G: Group>((G::Element, G::Element, G::Element, (G::Element, G::Element), [G::Element; N]), (G::Scalar, G::Scalar, G::Scalar, G::Scalar, [G::Scalar; N], [G::Scalar; N]), [G::Element; N], [G::Element; N]);
+pub struct ShuffleProof<G: Group>((G::Element, G::Element, G::Element, (G::Element, G::Element), [G::Element; N]), (G::Scalar, G::Scalar, G::Scalar, G::Scalar, [G::Scalar; N], [G::Scalar; N]), [G::Element; N], [G::Element; N]);
 
-impl<G: Group> fmt::Debug for Proof<G> {
+impl<G: Group> fmt::Debug for ShuffleProof<G> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", format!("({:?},{:?},{:?},{:?})", self.0, self.1, self.2, self.3).replace(" ", ""))
     }

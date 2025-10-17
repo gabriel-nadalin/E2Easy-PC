@@ -1,25 +1,24 @@
 use std::fmt;
 use std::sync::Arc;
 
-use bincode::{Encode, Decode};
 use rand::random_range;
 
 use crate::groups::{Element, Group, Scalar};
 use crate::utils::{modmul, modexp, modinv};
 
-#[derive(Clone, PartialEq, Encode, Decode)]
+#[derive(Clone, PartialEq)]
 pub struct U32ModScalar {
     pub value: u32,
     pub group: Arc<U32ModGroup>,
 }
 
-#[derive(Clone, PartialEq, Encode, Decode)]
+#[derive(Clone, PartialEq)]
 pub struct U32ModElement {
     pub value: u32,
     pub group: Arc<U32ModGroup>,
 }
 
-#[derive(Clone, PartialEq, Debug, Encode, Decode)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct U32ModGroup {
     pub p: u32,
     pub q: u32,
@@ -130,14 +129,14 @@ impl Group for U32ModGroup {
 
     fn random_element(&self) -> Self::Element {
         U32ModElement {
-            value: random_range(0..self.p),
+            value: random_range(2..self.p),
             group: Arc::new(self.clone()),
         }
     }
 
     fn random_scalar(&self) -> Self::Scalar {
         U32ModScalar {
-            value: random_range(0..self.q),
+            value: random_range(2..self.q),
             group: Arc::new(self.clone()),
         }
     }
@@ -172,37 +171,20 @@ impl Group for U32ModGroup {
     }
 }
 
-
-impl U32ModGroup {
-    pub fn new(p: u32, q: u32, g: u32) -> Arc<Self> {
-        Arc::new(U32ModGroup { p, q, g })
-    }
-
-    pub fn element_from_u32(&self, e: u32) -> U32ModElement {
-        U32ModElement {
-            value: e,
-            group: Arc::new(self.clone())
-        }
-    }
-
-    pub fn scalar_from_u32(&self, s: u32) -> U32ModScalar {
-        U32ModScalar {
-            value: s,
-            group: Arc::new(self.clone())
-        }
-    }
-}
-
 impl fmt::Debug for U32ModElement {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // e.g. show a short structured debug
-        write!(f, "{}", self.value)
+        write!(f, "{}", hex::encode(self.value.to_be_bytes()))
     }
 }
 
 impl fmt::Debug for U32ModScalar {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // choose what you want printed — here we print only the numeric value
-        write!(f, "{}", self.value)
+        write!(f, "{}", hex::encode(self.value.to_be_bytes()))
+    }
+}
+
+impl U32ModGroup {
+    pub fn new(p: u32, q: u32, g: u32) -> Arc<Self> {
+        Arc::new(U32ModGroup { p, q, g })
     }
 }

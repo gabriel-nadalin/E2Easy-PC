@@ -4,9 +4,9 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-bincode = "2.0.1"
 chrono = "0.4.42"
 ed25519-dalek = { version = "2.2.0", features = ["rand_core"] }
+hex = "0.4.3"
 num-primes = "0.3.0"
 rand = "0.9.1"
 rand08 = { package = "rand", version = "0.8" }
