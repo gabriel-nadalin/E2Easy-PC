@@ -1,12 +1,8 @@
 use mixnet_rust::{Number, Ciphertext, groups::u32_mod::{U32ModGroup, U32ModElement}, keys, shuffler::Shuffler, utils::*, verifier::Verifier, N};
 use mixnet_rust::groups::Group;
 use std::time::Instant;
-// use rand::random_range;
 
 fn main() {
-    // let (p, q) = safe_prime(2_u32.pow(31)).unwrap();
-    // let mut g = random_range(2..p-1);
-    // g = modexp(g, 2, p);
     let (p, q, g) = get_group_params();
     let group = U32ModGroup::new(p, q, g);
 
@@ -15,11 +11,6 @@ fn main() {
     let (enc_keys, _sig_keys) = keys::keygen(group.clone());
 
     let h_list: [U32ModElement; N] = core::array::from_fn(|_| group.random_element());
-        //                                                     {
-        // let mut h = random_range(2..p-1);
-        // h = modexp(h, 2, p);
-        // group.deserialize_to_element(h.to_be_bytes().to_vec())
-    // });
 
     let shuffler = Shuffler::new(group.clone(), h_list.clone(), enc_keys.pk.clone());
 
