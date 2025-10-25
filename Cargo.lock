@@ -104,6 +104,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "crypto-bigint"
+version = "0.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "96272c2ff28b807e09250b180ad1fb7889a3258f7455759b5c3c58b719467130"
+dependencies = [
+ "num-traits",
+ "rand_core 0.6.4",
+ "subtle",
+]
+
+[[package]]
 name = "crypto-common"
 version = "0.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -293,11 +304,13 @@ name = "mixnet-rust"
 version = "0.1.0"
 dependencies = [
  "chrono",
+ "crypto-bigint",
  "ed25519-dalek",
  "hex",
  "num-primes",
  "rand 0.8.5",
  "rand 0.9.2",
+ "rand_core 0.6.4",
  "sha2",
 ]
 
