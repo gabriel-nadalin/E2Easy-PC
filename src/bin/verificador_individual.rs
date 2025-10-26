@@ -1,4 +1,4 @@
-use mixnet_rust::{groups::{u32_mod::U32ModGroup, Element, Group}, io_helpers::request_user_input, keys::PublicKey, types::Vote, Ciphertext};
+use mixnet_rust::{groups::{u32_mod::U32ModGroup, Element, Group}, io_helpers::request_user_input, keys::PublicKey, types::Vote, utils::derive_nonces, Ciphertext};
 use sha2::{Digest, Sha256};
 
 fn main() {
@@ -13,24 +13,24 @@ fn main() {
     let voto1 = request_user_input("Insira o voto para presidente: ");
     let voto2 = request_user_input("Insira o voto para governador: ");
     let previous_hash = request_user_input("Insira o hash anterior: ");
-    let nonce1 = request_user_input("Insira o nonce 1: ");
-    let nonce2 = request_user_input("Insira o nonce 2: ");
+    let nonce = request_user_input("Insira o nonce: ");
     let timestamp = request_user_input("Insira o carimbo de tempo: ");
     println!("Verificando o voto...");
 
-    let pk: PublicKey<U32ModGroup> = PublicKey{element: group.deserialize_to_element(hex::decode(pk).unwrap())};
+    let pk: PublicKey<U32ModGroup> = PublicKey{element: group.element_from_bytes(&hex::decode(pk).unwrap())};
     let votes = vec![Vote::new(0, voto1.parse::<u8>().unwrap()), Vote::new(1, voto2.parse::<u8>().unwrap())];
     let previous_hash = hex::decode(previous_hash).unwrap();
-    let nonces = vec![group.deserialize_to_scalar(hex::decode(nonce1).unwrap()), group.deserialize_to_scalar(hex::decode(nonce2).unwrap())];
+    let seed = hex::decode(nonce).unwrap();
+    let nonces = derive_nonces(&*group, &seed, votes.len());
 
     let mut to_hash = previous_hash;
     to_hash.extend_from_slice(timestamp.as_bytes());
 
     for (vote, nonce) in votes.iter().zip(nonces) {
-        let encoded = group.deserialize_to_element(vote.to_bytes());
+        let encoded = group.element_from_bytes(&vote.to_bytes());
         let Ciphertext(c1, c2) = pk.encrypt(&encoded, &nonce);
 
-        let enc_vote = [c1.serialize(), c2.serialize()].concat();
+        let enc_vote = [c1.to_bytes(), c2.to_bytes()].concat();
         
         to_hash.extend_from_slice(&enc_vote);
     }

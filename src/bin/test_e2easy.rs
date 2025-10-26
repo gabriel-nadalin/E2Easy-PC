@@ -1,4 +1,4 @@
-use mixnet_rust::{e2easy::E2Easy, groups::{u32_mod::U32ModGroup, Element, Group}, types::{TrackingCode, Vote}, utils::{modexp, safe_prime}, Ciphertext};
+use mixnet_rust::{e2easy::E2Easy, groups::{u32_mod::U32ModGroup, Element, Group, Scalar}, types::{TrackingCode, Vote}, utils::{derive_nonces, modexp, safe_prime}, Ciphertext};
 use rand::random_range;
 use sha2::{Digest, Sha256};
 
@@ -9,7 +9,7 @@ fn main() {
 
     let group = U32ModGroup::new(p, q, g);
 
-    let mut e2easy = E2Easy::new(group);
+    let mut e2easy = E2Easy::new(group.clone());
 
 
 
@@ -43,16 +43,17 @@ fn main() {
     println!("tracking code: {:?}", tc);
 
     let chal = e2easy.challenge();
-    let (last_tc, votes, nonces) = chal.clone();
+    let (last_tc, votes, nonce_seed) = chal.clone();
+    let nonces = derive_nonces(&*group, &nonce_seed.to_bytes(), votes.len());
 
     let mut to_hash = last_tc.0.clone();
     to_hash.extend_from_slice(ts.as_bytes());
 
     for (vote, nonce) in votes.iter().zip(nonces) {
-        let encoded = e2easy.group.deserialize_to_element(vote.to_bytes());
+        let encoded = e2easy.group.element_from_bytes(&vote.to_bytes());
         let Ciphertext(c1, c2) = e2easy.enc_keys.encrypt(&encoded, &nonce);
 
-        let enc_vote = [c1.serialize(), c2.serialize()].concat();
+        let enc_vote = [c1.to_bytes(), c2.to_bytes()].concat();
         
         to_hash.extend_from_slice(&enc_vote);
     }
@@ -114,16 +115,17 @@ fn main() {
     println!("tracking code: {:?}", tc);
 
     let chal = e2easy.challenge();
-    let (last_tc, votes, nonces) = chal.clone();
+    let (last_tc, votes, nonce_seed) = chal.clone();
+    let nonces = derive_nonces(&*group, &nonce_seed.to_bytes(), votes.len());
 
     let mut to_hash = last_tc.0.clone();
     to_hash.extend_from_slice(ts.as_bytes());
 
     for (vote, nonce) in votes.iter().zip(nonces) {
-        let encoded = e2easy.group.deserialize_to_element(vote.to_bytes());
+        let encoded = e2easy.group.element_from_bytes(&vote.to_bytes());
         let Ciphertext(c1, c2) = e2easy.enc_keys.encrypt(&encoded, &nonce);
 
-        let enc_vote = [c1.serialize(), c2.serialize()].concat();
+        let enc_vote = [c1.to_bytes(), c2.to_bytes()].concat();
         
         to_hash.extend_from_slice(&enc_vote);
     }

@@ -4,7 +4,7 @@ use chrono::Utc;
 
 use sha2::{Digest, Sha256};
 use ed25519_dalek::Signature;
-use crate::{groups::{Element, Group}, keys::{self, EncryptionKeys, SignatureKeys}, types::*, Ciphertext};
+use crate::{groups::{Element, Group, Scalar}, keys::{self, EncryptionKeys, SignatureKeys}, types::*, utils::derive_nonces, Ciphertext};
 
 pub struct E2Easy<G: Group> {
     pub group: Arc<G>,
@@ -12,7 +12,7 @@ pub struct E2Easy<G: Group> {
     sig_keys: SignatureKeys,
     pub vote_table: VoteTable<G>,
     votes: Vec<Vote>,
-    nonces: Vec<G::Scalar>,
+    nonce_seed: G::Scalar,
     enc_votes: Vec<Ciphertext<G>>,
     timestamp: String,
     tracking_code: TrackingCode,
@@ -26,12 +26,12 @@ impl<G: Group> E2Easy<G> {
     pub fn new(group: Arc<G>) -> Self {
         let (enc_keys, sig_keys) = keys::keygen(group.clone());
         Self {
-            group,
+            group: group.clone(),
             enc_keys,
             sig_keys,
             vote_table: VoteTable::new(),
             votes: Vec::new(),
-            nonces: Vec::new(),
+            nonce_seed: group.zero(),
             enc_votes: Vec::new(),
             timestamp: "".to_string(),
             tracking_code: TrackingCode(Vec::new()),
@@ -48,20 +48,21 @@ impl<G: Group> E2Easy<G> {
     }
 
     pub fn vote(&mut self, votes: Vec<Vote>) -> (TrackingCode, String) {
+        self.nonce_seed = self.group.random_scalar();
+        let nonces = derive_nonces(&*self.group, &self.nonce_seed.to_bytes(), votes.len());
+
         self.timestamp = Utc::now().to_rfc3339();
 
         let mut to_hash = self.prev_tracking_code.0.clone();
         to_hash.extend_from_slice(self.timestamp.as_bytes());
 
-        for vote in votes {
-            let r = self.group.random_scalar();
-            let encoded_vote = self.group.deserialize_to_element(vote.to_bytes());
-            let encrypted_vote = self.enc_keys.encrypt(&encoded_vote, &r);
+        for (vote, nonce) in votes.iter().zip(nonces) {
+            let encoded_vote = self.group.element_from_bytes(&vote.to_bytes());
+            let encrypted_vote = self.enc_keys.encrypt(&encoded_vote, &nonce);
 
-            to_hash.extend_from_slice(&[encrypted_vote.0.serialize(), encrypted_vote.1.serialize()].concat());
+            to_hash.extend_from_slice(&[encrypted_vote.0.to_bytes(), encrypted_vote.1.to_bytes()].concat());
 
-            self.votes.push(vote);
-            self.nonces.push(r);
+            self.votes.push(vote.clone());
             self.enc_votes.push(encrypted_vote);
         }
         
@@ -69,13 +70,13 @@ impl<G: Group> E2Easy<G> {
         (self.tracking_code.clone(), self.timestamp.clone())
     }
 
-    pub fn challenge(&mut self) -> (TrackingCode, Vec<Vote>, Vec<G::Scalar>) {
-        let output = (self.prev_tracking_code.clone(), self.votes.clone(), self.nonces.clone());
+    pub fn challenge(&mut self) -> (TrackingCode, Vec<Vote>, G::Scalar) {
+        let output = (self.prev_tracking_code.clone(), self.votes.clone(), self.nonce_seed.clone());
 
         self.tracking_code = TrackingCode(Vec::new());
         self.timestamp = "".to_string();
+        self.nonce_seed = self.group.zero();
         self.votes = Vec::new();
-        self.nonces = Vec::new();
         self.enc_votes = Vec::new();
 
         output
@@ -83,21 +84,19 @@ impl<G: Group> E2Easy<G> {
 
     pub fn cast(&mut self) -> Signature {
         let signature = self.sig_keys.sign(self.tracking_code.0.clone());
-        for enc_vote in self.enc_votes.clone() {
-            let entry = VoteTableEntry {
-                tracking_code: self.tracking_code.clone(),
-                enc_vote,
-                time: self.timestamp.clone()
-            };
-            self.vote_table.add_entry(entry);
+        let entry = Ballot {
+            tracking_code: self.tracking_code.clone(),
+            enc_votes: self.enc_votes.clone(),
+            timestamp: self.timestamp.clone()
+        };
+        self.vote_table.add_entry(entry);
 
-        }
         self.prev_tracking_code = self.tracking_code.clone();
 
         self.tracking_code = TrackingCode(Vec::new());
         self.timestamp = "".to_string();
+        self.nonce_seed = self.group.zero();
         self.votes = Vec::new();
-        self.nonces = Vec::new();
         self.enc_votes = Vec::new();
         
         signature

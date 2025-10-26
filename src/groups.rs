@@ -7,6 +7,10 @@ pub trait Scalar<G: Group>: Clone + PartialEq + std::fmt::Debug {
     fn mul(&self, other: &Self) -> Self;
     fn neg(&self) -> Self; // Additive inverse
     fn inv(&self) -> Self; // multiplicative inverse
+
+    fn to_bytes(&self) -> Vec<u8>;
+
+    fn group(&self) -> G;
 }
 
 pub trait Element<G: Group>: Clone + PartialEq + std::fmt::Debug {
@@ -24,7 +28,7 @@ pub trait Element<G: Group>: Clone + PartialEq + std::fmt::Debug {
         self.add(&other.inv())
     }
 
-    fn serialize(&self) -> Vec<u8>;
+    fn to_bytes(&self) -> Vec<u8>;
 
     fn group(&self) -> G;
 }
@@ -49,7 +53,7 @@ pub trait Group: Clone + PartialEq + std::fmt::Debug {
     /// multiplica o gerador do grupo pelo escalar `scalar`
     fn mul_generator(&self, scalar: &Self::Scalar) -> Self::Element;
 
-    fn deserialize_to_element(&self, bytes: Vec<u8>) -> Self::Element;
+    fn element_from_bytes(&self, bytes: &[u8]) -> Self::Element;
 
-    fn deserialize_to_scalar(&self, bytes: Vec<u8>) -> Self::Scalar;
+    fn scalar_from_bytes(&self, bytes: &[u8]) -> Self::Scalar;
 }

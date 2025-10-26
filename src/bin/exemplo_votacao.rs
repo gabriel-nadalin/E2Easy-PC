@@ -18,7 +18,7 @@ fn main () {
 
     let mut e2easy = E2Easy::new(group);
 
-    println!("Chave pública de cifração: {}", hex::encode(e2easy.enc_keys.pk.element.serialize()));
+    println!("Chave pública de cifração: {}", hex::encode(e2easy.enc_keys.pk.element.to_bytes()));
 
     loop {
         let is_new_voter = request_user_input("\nReceber novo voto? (s/n): ");
@@ -41,11 +41,11 @@ fn main () {
 
         let challenge_or_cast = request_user_input("Deseja (1) lançar o voto ou (2) desafiar a urna? ");
         if challenge_or_cast == CHALLENGE {
-            let (previous_hash, _votes, nonces) = e2easy.challenge();
+            let (previous_hash, _votes, nonce) = e2easy.challenge();
 
             println!("Aqui estão os dados para o desafio:");
             println!("    hash anterior: {}", hex::encode(previous_hash.0));
-            println!("    nonce: {:?}", nonces);
+            println!("    nonce: {:?}", nonce);
             println!("    carimbo de tempo: {}", timestamp);
             println!("Voto descartado. Vote novamente.")
         } else {

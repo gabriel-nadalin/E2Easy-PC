@@ -23,7 +23,7 @@ impl<G: Group> Verifier<G> {
         for i in 0..N {
             // IMPORTANTE
             // TODO: definir forma canonica de serializacao para hash com formato consistente
-            u_list[i] = self.group.deserialize_to_scalar(Sha256::digest(format!("(({:?},{:?},{:?}),{:?})", e_list, e_prime_list, c_list, i).replace(" ", "").as_bytes()).to_vec());
+            u_list[i] = self.group.scalar_from_bytes(&Sha256::digest(format!("(({:?},{:?},{:?}),{:?})", e_list, e_prime_list, c_list, i).replace(" ", "").as_bytes()));
         }
 
         let c_bar = c_list.iter().fold(self.group.identity(), |acc, x| acc.add(x))
@@ -47,7 +47,7 @@ impl<G: Group> Verifier<G> {
         let y = (e_list, e_prime_list.clone(), c_list, c_hat_list.clone(), pk.element.clone());
         // IMPORTANTE
         // TODO: definir forma canonica de serializacao para hash com formato consistente
-        let c = self.group.deserialize_to_scalar(Sha256::digest(format!("({:?}, {:?})", y, t).replace(" ", "").as_bytes()).to_vec());
+        let c = self.group.scalar_from_bytes(&Sha256::digest(format!("({:?}, {:?})", y, t).replace(" ", "").as_bytes()));
 
         let t_prime_0 = c_bar.mul_scalar(&c).inv().add(&self.group.mul_generator(&s.0));
         let t_prime_1 = c_hat.mul_scalar(&c).inv().add(&self.group.mul_generator(&s.1));

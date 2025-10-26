@@ -100,7 +100,7 @@ impl<G: Group> Shuffler<G> {
         for i in 0..N {
             // IMPORTANTE
             // TODO: definir forma canonica de serializacao para hash com formato consistente
-            u_list[i] = self.group.deserialize_to_scalar(Sha256::digest(format!("(({:?},{:?},{:?}),{:?})", e_list, e_prime_list, c_list, i).replace(" ", "").as_bytes()).to_vec());
+            u_list[i] = self.group.scalar_from_bytes(&Sha256::digest(format!("(({:?},{:?},{:?}),{:?})", e_list, e_prime_list, c_list, i).replace(" ", "").as_bytes()));
         }
 
         let u_prime_list = from_fn(|i| u_list[psi[i]].clone());
@@ -164,7 +164,7 @@ impl<G: Group> Shuffler<G> {
         let t = (t0, t1, t2, (t3_0, t3_1), t_hat_list);
         // IMPORTANTE
         // TODO: definir forma canonica de serializacao para hash com formato consistente
-        let c = self.group.deserialize_to_scalar(Sha256::digest(format!("({:?},{:?})", y, t).replace(" ", "").as_bytes()).to_vec());
+        let c = self.group.scalar_from_bytes(&Sha256::digest(format!("({:?},{:?})", y, t).replace(" ", "").as_bytes()));
 
         let s0 = w_list[0].add(&c.mul(&r_bar));
         let s1 = w_list[1].add(&c.mul(&r_hat));
