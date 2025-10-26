@@ -1,76 +1,20 @@
 use rand::random_range;
+use crate::{Number, NumberNZ, ModNumber, ModNumberParams};
+use crypto_bigint::{RandomMod, rand_core::OsRng};
 
-pub fn is_prime(n: u32) -> bool {
-    if n <= 1 {
-        return false;
-    }
-    if n == 2 {
-        return true;
-    }
-    if n % 2 == 0 {
-        return false;
-    }
-    let limit = (n as f32).sqrt() as u32 + 1;
-    for i in (3..limit).step_by(2) {
-        if n % i == 0 {
-            return false;
-        }
-    }
-    true
-}
-
-// retorna um primo seguro e a ordem do grupo (p = 2*q + 1)
-pub fn safe_prime(size: u32) -> Option<(u32, u32)> {
+pub fn get_group_params() -> (ModNumberParams, NumberNZ, ModNumber) {
+    // 256-bits example
+    // let p = ModNumberParams::new_vartime(Number::from_be_hex("BF4AAA250D7578E410D0DC2D68645146113D1CE9D9DD2D522BF403BF41405613").to_odd().unwrap());
+    // let q = Number::from_be_hex("5FA5551286BABC7208686E16B43228A3089E8E74ECEE96A915FA01DFA0A02B09").to_nz().unwrap();
+    let p = ModNumberParams::new_vartime(Number::from_be_hex("FFFFFFFFFFFFFFFFC90FDAA22168C234C4C6628B80DC1CD129024E088A67CC74020BBEA63B139B22514A08798E3404DDEF9519B3CD3A431B302B0A6DF25F14374FE1356D6D51C245E485B576625E7EC6F44C42E9A637ED6B0BFF5CB6F406B7EDEE386BFB5A899FA5AE9F24117C4B1FE649286651ECE45B3DC2007CB8A163BF0598DA48361C55D39A69163FA8FD24CF5F83655D23DCA3AD961C62F356208552BB9ED529077096966D670C354E4ABC9804F1746C08CA18217C32905E462E36CE3BE39E772C180E86039B2783A2EC07A28FB5C55DF06F4C52C9DE2BCBF6955817183995497CEA956AE515D2261898FA051015728E5A8AAAC42DAD33170D04507A33A85521ABDF1CBA64ECFB850458DBEF0A8AEA71575D060C7DB3970F85A6E1E4C7ABF5AE8CDB0933D71E8C94E04A25619DCEE3D2261AD2EE6BF12FFA06D98A0864D87602733EC86A64521F2B18177B200CBBE117577A615D6C770988C0BAD946E208E24FA074E5AB3143DB5BFCE0FD108E4B82D120A93AD2CAFFFFFFFFFFFFFFFF").to_odd().unwrap());
+    let q = Number::from_be_hex("7FFFFFFFFFFFFFFFE487ED5110B4611A62633145C06E0E68948127044533E63A0105DF531D89CD9128A5043CC71A026EF7CA8CD9E69D218D98158536F92F8A1BA7F09AB6B6A8E122F242DABB312F3F637A262174D31BF6B585FFAE5B7A035BF6F71C35FDAD44CFD2D74F9208BE258FF324943328F6722D9EE1003E5C50B1DF82CC6D241B0E2AE9CD348B1FD47E9267AFC1B2AE91EE51D6CB0E3179AB1042A95DCF6A9483B84B4B36B3861AA7255E4C0278BA3604650C10BE19482F23171B671DF1CF3B960C074301CD93C1D17603D147DAE2AEF837A62964EF15E5FB4AAC0B8C1CCAA4BE754AB5728AE9130C4C7D02880AB9472D45556216D6998B8682283D19D42A90D5EF8E5D32767DC2822C6DF785457538ABAE83063ED9CB87C2D370F263D5FAD7466D8499EB8F464A702512B0CEE771E9130D697735F897FD036CC504326C3B01399F643532290F958C0BBD90065DF08BABBD30AEB63B84C4605D6CA371047127D03A72D598A1EDADFE707E884725C16890549D69657FFFFFFFFFFFFFFF").to_nz().unwrap();
+    let mut temp_g: Number;
     loop {
-        let q = random_range(0..size);
-        let p = 2 * q + 1;
-
-        if is_prime(p) && is_prime(q) {
-            return Some((p, q))
+        temp_g = Number::random_mod(&mut OsRng, &p.modulus().as_nz_ref());
+        if temp_g > Number::ONE {
+            break;
         }
     }
-}
-
-pub fn modmul(a: u32, b: u32, modulo: u32) -> u32 {
-    ((a as u64 * b as u64) % modulo as u64) as u32
-}
-
-pub fn modinv(a: u32, modulo: u32) -> Option<u32> {
-    let mut t = 0;
-    let mut new_t = 1;
-    let mut r = modulo as i64;
-    let mut new_r = a as i64;
-
-    while new_r != 0 {
-        let q = r / new_r;
-        (t, new_t) = (new_t, t - q * new_t);
-        (r, new_r) = (new_r, r - q * new_r);
-    }
-
-    if r > 1 {
-        return None
-    }
-    if t < 0 {
-        t = t + modulo as i64;
-    }
-    return Some(t as u32)
-}
-
-pub fn modexp(base: u32, mut exp: u32, modulo: u32) -> u32 {
-    if modulo == 1 {
-        return 0
-    }
-    let mut b = base as u64;
-    let m = modulo as u64;
-    let mut result = 1;
-
-    b %= m;
-    while exp > 0 {
-        if exp % 2 == 1 {
-            result = result * b % m;
-        }
-        b = b * b % m;
-        exp /= 2;
-    }
-    result as u32
+    let g = ModNumber::new(&temp_g, p).square(); 
+    return (p, q, g)
 }

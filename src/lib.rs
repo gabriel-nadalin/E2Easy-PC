@@ -1,5 +1,7 @@
 use std::fmt;
 
+use crypto_bigint::{Uint, NonZero, modular::{MontyForm, MontyParams}};
+
 use crate::groups::Group;
 
 pub mod e2easy;
@@ -12,6 +14,11 @@ pub mod verifier;
 pub mod io_helpers;
 
 pub const N: usize = 10;
+pub const SIZE: usize = 3072;
+pub type Number = Uint<{SIZE/64}>;
+pub type NumberNZ = NonZero<Number>;
+pub type ModNumber = MontyForm<{SIZE/64}>;
+pub type ModNumberParams = MontyParams<{SIZE/64}>;
 
 #[derive(Clone, PartialEq)]
 pub struct Ciphertext<G: Group>(pub G::Element, pub G::Element);
