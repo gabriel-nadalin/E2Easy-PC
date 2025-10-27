@@ -1,4 +1,4 @@
-use crate::{groups::traits::{Element, Group, Scalar}, keys::PublicKey, Ciphertext, ShuffleProof };
+use crate::{groups::traits::{Element, Group, Scalar}, keys::PublicKey, types::{Ciphertext, ShuffleProof}};
 use std::sync::Arc;
 use sha2::{Digest, Sha256};
 
@@ -19,7 +19,7 @@ impl<G: Group> Verifier<G> {
     }
 
     pub fn check_proof(&self, pi: &ShuffleProof<G>, e_list: &[Ciphertext<G>], e_prime_list: &[Ciphertext<G>], pk: &PublicKey<G>) -> bool {
-        let ShuffleProof(t, s, c_list, c_hat_list) = pi;
+        let (t, s, c_list, c_hat_list) = pi.components();
 
         let mut u_list: Vec<G::Scalar> = Vec::new();
         for i in 0..self.n {
@@ -39,11 +39,11 @@ impl<G: Group> Verifier<G> {
             .fold(self.group.identity(), |acc, x| acc.add(&x));
         let a_prime = e_list.iter()
             .zip(u_list.iter())
-            .map(|(e, u)| e.0.mul_scalar(u))
+            .map(|(e, u)| e.c1().mul_scalar(u))
             .fold(self.group.identity(), |acc, x| acc.add(&x));
         let b_prime = e_list.iter()
             .zip(u_list.iter())
-            .map(|(e, u)| e.1.mul_scalar(u))
+            .map(|(e, u)| e.c2().mul_scalar(u))
             .fold(self.group.identity(), |acc, x| acc.add(&x));
 
         let y = (e_list, e_prime_list, c_list, c_hat_list.clone(), pk.element.clone());
@@ -62,13 +62,13 @@ impl<G: Group> Verifier<G> {
         let t_prime_3_0 = a_prime.mul_scalar(&c).inv().add(&pk.element.mul_scalar(&s.3).inv()).add(
             &e_prime_list.iter()
             .zip(s.5.iter())
-            .map(|(e, s_prime)| e.0.mul_scalar(s_prime))
+            .map(|(e, s_prime)| e.c1().mul_scalar(s_prime))
             .fold(self.group.identity(), |acc, x| acc.add(&x))
         );
         let t_prime_3_1 = b_prime.mul_scalar(&c).inv().add(&self.group.mul_generator(&s.3).inv()).add(
             &e_prime_list.iter()
             .zip(s.5.iter())
-            .map(|(e, s_prime)| e.1.mul_scalar(s_prime))
+            .map(|(e, s_prime)| e.c2().mul_scalar(s_prime))
             .fold(self.group.identity(), |acc, x| acc.add(&x))
         );
 

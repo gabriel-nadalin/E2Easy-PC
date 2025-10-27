@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use rand08::rngs::OsRng;
 use ed25519_dalek::{Signature, SignatureError, Signer, SigningKey, Verifier, VerifyingKey};
-use crate::{groups::traits::{Element, Group, Scalar}, Ciphertext};
+use crate::{groups::traits::{Element, Group, Scalar}, types::Ciphertext};
 
 pub struct SignatureKeys {
     pub sk: SigningKey,
@@ -58,7 +58,7 @@ impl<G: Group> SecretKey<G> {
     }
 
     pub fn decrypt(&self, c: &Ciphertext<G>) -> G::Element {
-        let Ciphertext(c1, c2) = c;
+        let (c1, c2) = c.components();
         c1.add(&c2.mul_scalar(&self.scalar).inv())
     }
 
@@ -73,7 +73,7 @@ impl<G: Group> PublicKey<G> {
     pub fn encrypt(&self, m: &G::Element, r: &G::Scalar) -> Ciphertext<G> {
         let c1 = m.add(&self.element.mul_scalar(&r));
         let c2 = self.element.group().mul_generator(&r);
-        Ciphertext(c1, c2)
+        Ciphertext::new(c1, c2)
     }
 }
 

@@ -1,4 +1,4 @@
-use crate::{groups::traits::{Element, Group, Scalar}, keys::PublicKey, Ciphertext, ShuffleProof};
+use crate::{groups::traits::{Element, Group, Scalar}, keys::PublicKey, types::{Ciphertext, ShuffleProof}};
 use rand::random_range;
 use std::sync::Arc;
 use sha2::{Digest, Sha256};
@@ -11,12 +11,12 @@ pub struct Shuffler<G: Group> {
 }
 
 impl<G: Group> Shuffler<G> {
-    pub fn new(group: Arc<G>, h_list: Vec<G::Element>, pk: PublicKey<G>) -> Self {
+    pub fn new(group: Arc<G>, h_list: Vec<G::Element>, pk: &PublicKey<G>) -> Self {
         let n = h_list.len();
         Self {
             group,
             h_list,
-            pk,
+            pk: pk.clone(),
             n,
         }
     }
@@ -43,12 +43,12 @@ impl<G: Group> Shuffler<G> {
         let psi = self.gen_permutation();
 
         for i in 0..self.n {
-            let Ciphertext(a, b) = &e_list[i];
+            let (a, b) = e_list[i].components();
 
             let r_prime = self.group.random_scalar();
             let a_prime = a.add(&self.pk.element.mul_scalar(&r_prime));
             let b_prime = b.add(&self.group.mul_generator(&r_prime));
-            let e_prime = Ciphertext(a_prime, b_prime);
+            let e_prime = Ciphertext::new(a_prime, b_prime);
 
             e_prime_tmp.push(e_prime);
             r_prime_list.push(r_prime);
@@ -79,6 +79,8 @@ impl<G: Group> Shuffler<G> {
     }
 
     pub fn gen_commitment_chain(&self, c0: &G::Element, u_list: &[G::Scalar]) -> (Vec<G::Element>, Vec<G::Scalar>) {
+        assert_eq!(u_list.len(), self.n, "u_list must have size {}", self.n);
+
         let mut r_list = Vec::new();
         let mut c_list: Vec<G::Element> = Vec::new();
 
@@ -100,6 +102,11 @@ impl<G: Group> Shuffler<G> {
         r_prime_list: &[G::Scalar],
         psi: &[usize]
     ) -> ShuffleProof<G> {
+        assert_eq!(e_list.len(), self.n, "e_list must have size {}", self.n);
+        assert_eq!(e_prime_list.len(), self.n, "e_prime_list must have size {}", self.n);
+        assert_eq!(r_prime_list.len(), self.n, "r_prime_list must have size {}", self.n);
+        assert_eq!(psi.len(), self.n, "psi must have size {}", self.n);
+        
         let (c_list, r_list) = self.gen_commitment(psi);
         let mut u_list = Vec::new();
 
@@ -150,14 +157,14 @@ impl<G: Group> Shuffler<G> {
             &e_prime_list
                 .iter()
                 .zip(w_prime_list.iter())
-                .map(|(e_prime, w_prime)| e_prime.0.mul_scalar(w_prime))
+                .map(|(e_prime, w_prime)| e_prime.c1().mul_scalar(w_prime))
                 .fold(self.group.identity(), |acc, x| acc.add(&x))
         );
         let t3_1 = self.group.mul_generator(&w_list[3]).inv().add(
             &e_prime_list
                 .iter()
                 .zip(w_prime_list.iter())
-                .map(|(e_prime, w_prime)| e_prime.1.mul_scalar(w_prime))
+                .map(|(e_prime, w_prime)| e_prime.c2().mul_scalar(w_prime))
                 .fold(self.group.identity(), |acc, x| acc.add(&x))
         );
 
@@ -184,6 +191,6 @@ impl<G: Group> Shuffler<G> {
             s_prime_list.push(w_prime_list[i].add(&c.mul(&u_prime_list[i])));
         }
         let s = (s0, s1, s2, s3, s_hat_list, s_prime_list);
-        return ShuffleProof(t, s, c_list, c_hat_list)
+        return ShuffleProof::new(t, s, c_list, c_hat_list)
     }
 }

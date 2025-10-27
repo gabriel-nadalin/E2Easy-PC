@@ -1,4 +1,4 @@
-use mixnet_rust::{Number, Ciphertext, groups::bigint_mod::{BigIntModGroup, BigIntModElement}, keys, shuffler::Shuffler, utils::*, verifier::Verifier, N};
+use mixnet_rust::{Number, types::Ciphertext, groups::bigint_mod::{BigIntModGroup, BigIntModElement}, keys, shuffler::Shuffler, utils::*, verifier::Verifier, N};
 use mixnet_rust::groups::traits::Group;
 use std::time::Instant;
 
@@ -12,7 +12,7 @@ fn main() {
 
     let h_list: Vec<BigIntModElement> = (0..N).map(|_| group.random_element()).collect();
 
-    let shuffler = Shuffler::new(group.clone(), h_list.to_vec(), enc_keys.pk.clone());
+    let shuffler = Shuffler::new(group.clone(), h_list.to_vec(), &enc_keys.pk);
 
     let plaintext_list: Vec<_> = (0..N).map(|i| { 
         // Need to improve, but ok for numbers less than 1000 bits (because I removed (mod p))

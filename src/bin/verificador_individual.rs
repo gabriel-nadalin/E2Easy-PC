@@ -1,4 +1,4 @@
-use mixnet_rust::{groups::{bigint_mod::BigIntModGroup, traits::{Element, Group}}, io_helpers::request_user_input, keys::PublicKey, types::Vote, utils::derive_nonces, Ciphertext};
+use mixnet_rust::{groups::{bigint_mod::BigIntModGroup, traits::{Element, Group}}, io_helpers::request_user_input, keys::PublicKey, types::Vote, utils::derive_nonces, types::Ciphertext};
 use sha2::{Digest, Sha256};
 
 fn main() {
@@ -27,12 +27,11 @@ fn main() {
     to_hash.extend_from_slice(timestamp.as_bytes());
 
     for (vote, nonce) in votes.iter().zip(nonces) {
-        let encoded = group.element_from_bytes(&vote.to_bytes());
-        let Ciphertext(c1, c2) = pk.encrypt(&encoded, &nonce);
-
-        let enc_vote = [c1.to_bytes(), c2.to_bytes()].concat();
+        let vote_element = group.element_from_bytes(&vote.to_bytes());
         
-        to_hash.extend_from_slice(&enc_vote);
+        let enc_vote_bytes = pk.encrypt(&vote_element, &nonce).to_bytes();
+        
+        to_hash.extend_from_slice(&enc_vote_bytes);
     }
 
     assert_eq!(tc, hex::encode(Sha256::digest(to_hash)), "Resultado: Erro! O voto NÃO foi gerado corretamente.");

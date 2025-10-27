@@ -4,7 +4,7 @@ use chrono::Utc;
 
 use sha2::{Digest, Sha256};
 use ed25519_dalek::Signature;
-use crate::{groups::traits::{Element, Group, Scalar}, keys::{self, EncryptionKeys, SignatureKeys}, types::*, utils::derive_nonces, Ciphertext};
+use crate::{groups::traits::{Element, Group, Scalar}, keys::{self, EncryptionKeys, SignatureKeys}, shuffler::Shuffler, types::*, utils::derive_nonces};
 
 pub struct E2Easy<G: Group> {
     pub group: Arc<G>,
@@ -60,7 +60,7 @@ impl<G: Group> E2Easy<G> {
             let encoded_vote = self.group.element_from_bytes(&vote.to_bytes());
             let encrypted_vote = self.enc_keys.encrypt(&encoded_vote, &nonce);
 
-            to_hash.extend_from_slice(&[encrypted_vote.0.to_bytes(), encrypted_vote.1.to_bytes()].concat());
+            to_hash.extend_from_slice(&[encrypted_vote.c1().to_bytes(), encrypted_vote.c2().to_bytes()].concat());
 
             self.votes.push(vote.clone());
             self.enc_votes.push(encrypted_vote);
@@ -102,7 +102,22 @@ impl<G: Group> E2Easy<G> {
         signature
     }
 
-    pub fn tally() -> (Proofs, VoteTable<G>, VoteOutput) {
+    pub fn tally(&self) -> (Proofs, VoteTable<G>, VoteOutput) {
+        let e_list = self.vote_table.votes();
+        let h_list: Vec<G::Element> = (0..e_list.len()).map(|_| self.group.random_element()).collect();
+
+        let shuffler = Shuffler::new(self.group.clone(), h_list, &self.enc_keys.pk);
+
+        let (e_prime_list, r_prime_list, psi) = shuffler.gen_shuffle(&e_list);
+
+        let shuffle_proof = shuffler.gen_proof(
+            &e_list,
+            &e_prime_list,
+            &r_prime_list,
+            &psi
+        );
+
+        println!("{:?}", shuffle_proof);
         todo!()
     }
 

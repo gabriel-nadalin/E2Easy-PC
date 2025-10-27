@@ -1,4 +1,4 @@
-use mixnet_rust::{e2easy::E2Easy, groups::{u32_mod::U32ModGroup, traits::{Element, Group, Scalar}}, types::{TrackingCode, Vote}, utils::{derive_nonces}, Ciphertext};
+use mixnet_rust::{e2easy::E2Easy, groups::{u32_mod::U32ModGroup, traits::{Element, Group, Scalar}}, types::{TrackingCode, Vote, Ciphertext}, utils::{derive_nonces}};
 use sha2::{Digest, Sha256};
 
 fn main() {
@@ -46,12 +46,11 @@ fn main() {
     to_hash.extend_from_slice(ts.as_bytes());
 
     for (vote, nonce) in votes.iter().zip(nonces) {
-        let encoded = e2easy.group.element_from_bytes(&vote.to_bytes());
-        let Ciphertext(c1, c2) = e2easy.enc_keys.encrypt(&encoded, &nonce);
+        let vote_element = e2easy.group.element_from_bytes(&vote.to_bytes());
 
-        let enc_vote = [c1.to_bytes(), c2.to_bytes()].concat();
+        let enc_vote_bytes = e2easy.enc_keys.encrypt(&vote_element, &nonce).to_bytes();
         
-        to_hash.extend_from_slice(&enc_vote);
+        to_hash.extend_from_slice(&enc_vote_bytes);
     }
     
     assert_eq!(tc, TrackingCode(Sha256::digest(to_hash).to_vec()));
@@ -118,12 +117,11 @@ fn main() {
     to_hash.extend_from_slice(ts.as_bytes());
 
     for (vote, nonce) in votes.iter().zip(nonces) {
-        let encoded = e2easy.group.element_from_bytes(&vote.to_bytes());
-        let Ciphertext(c1, c2) = e2easy.enc_keys.encrypt(&encoded, &nonce);
-
-        let enc_vote = [c1.to_bytes(), c2.to_bytes()].concat();
+        let vote_element = e2easy.group.element_from_bytes(&vote.to_bytes());
         
-        to_hash.extend_from_slice(&enc_vote);
+        let enc_vote_bytes = e2easy.enc_keys.encrypt(&vote_element, &nonce).to_bytes();
+        
+        to_hash.extend_from_slice(&enc_vote_bytes);
     }
     
     assert_eq!(tc, TrackingCode(Sha256::digest(to_hash).to_vec()));
@@ -132,4 +130,5 @@ fn main() {
     println!("{:#?} {:#?}\n\n", chal, e2easy.vote_table);
 
     
+    e2easy.tally();
 }
