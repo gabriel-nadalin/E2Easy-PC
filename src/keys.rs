@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use rand08::rngs::OsRng;
 use ed25519_dalek::{Signature, SignatureError, Signer, SigningKey, Verifier, VerifyingKey};
-use crate::{groups::{Element, Group, Scalar}, Ciphertext};
+use crate::{groups::traits::{Element, Group, Scalar}, Ciphertext};
 
 pub struct SignatureKeys {
     pub sk: SigningKey,

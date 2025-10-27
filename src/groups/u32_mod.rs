@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use rand::random_range;
 
-use crate::groups::{Element, Group, Scalar};
+use crate::groups::traits::{Element, Group, Scalar};
 
 #[derive(Clone, PartialEq)]
 pub struct U32ModScalar {

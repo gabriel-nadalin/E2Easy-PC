@@ -1,6 +1,6 @@
 use std::fmt;
 
-use crate::{groups::Group, Ciphertext};
+use crate::{groups::traits::Group, Ciphertext};
 
 
 #[derive(Clone, PartialEq, Debug)]

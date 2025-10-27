@@ -1,5 +1,5 @@
 use sha2::{Digest, Sha256};
-use crate::{groups::Group, ModNumber, ModNumberParams, Number, NumberNZ};
+use crate::{groups::traits::Group, ModNumber, ModNumberParams, Number, NumberNZ};
 use crypto_bigint::{RandomMod, rand_core::OsRng};
 
 pub fn get_group_params() -> (ModNumberParams, NumberNZ, ModNumber) {

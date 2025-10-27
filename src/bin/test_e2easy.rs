@@ -1,4 +1,4 @@
-use mixnet_rust::{e2easy::E2Easy, groups::{u32_mod::U32ModGroup, Element, Group, Scalar}, types::{TrackingCode, Vote}, utils::{derive_nonces}, Ciphertext};
+use mixnet_rust::{e2easy::E2Easy, groups::{u32_mod::U32ModGroup, traits::{Element, Group, Scalar}}, types::{TrackingCode, Vote}, utils::{derive_nonces}, Ciphertext};
 use sha2::{Digest, Sha256};
 
 fn main() {

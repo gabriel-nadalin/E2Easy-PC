@@ -4,7 +4,7 @@ use chrono::Utc;
 
 use sha2::{Digest, Sha256};
 use ed25519_dalek::Signature;
-use crate::{groups::{Element, Group, Scalar}, keys::{self, EncryptionKeys, SignatureKeys}, types::*, utils::derive_nonces, Ciphertext};
+use crate::{groups::traits::{Element, Group, Scalar}, keys::{self, EncryptionKeys, SignatureKeys}, types::*, utils::derive_nonces, Ciphertext};
 
 pub struct E2Easy<G: Group> {
     pub group: Arc<G>,

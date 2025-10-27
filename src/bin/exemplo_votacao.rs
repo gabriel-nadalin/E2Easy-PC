@@ -1,7 +1,7 @@
 use std::io::{self, Write};
 use mixnet_rust::io_helpers::request_user_input;
 
-use mixnet_rust::{e2easy::E2Easy, groups::{u32_mod::U32ModGroup, Element}, types::Vote};
+use mixnet_rust::{e2easy::E2Easy, groups::{bigint_mod::BigIntModGroup, traits::Element}, types::Vote};
 
 const CHALLENGE: &str = "2";
 const CAST: &str = "1";
@@ -12,9 +12,9 @@ fn main () {
     // let mut g = random_range(2..p-1);
     // g = modexp(g, 2, p);
 
-    let (p, q, g) = (3864258863, 1932129431, 3051949095);
+    let (p, q, g) = mixnet_rust::utils::get_group_params();
 
-    let group = U32ModGroup::new(p, q, g);
+    let group = BigIntModGroup::new(p, q, g);
 
     let mut e2easy = E2Easy::new(group);
 

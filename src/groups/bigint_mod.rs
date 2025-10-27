@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use crypto_bigint::{RandomMod, rand_core::OsRng};
 
-use crate::groups::{Element, Group, Scalar};
+use crate::groups::traits::{Element, Group, Scalar};
 use crate::{Number, NumberNZ, ModNumber, ModNumberParams, SIZE};
 
 
