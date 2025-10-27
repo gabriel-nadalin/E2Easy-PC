@@ -1,26 +1,26 @@
-use mixnet_rust::{Number, Ciphertext, groups::u32_mod::{U32ModGroup, U32ModElement}, keys, shuffler::Shuffler, utils::*, verifier::Verifier, N};
+use mixnet_rust::{Number, Ciphertext, groups::bigint_mod::{BigIntModGroup, BigIntModElement}, keys, shuffler::Shuffler, utils::*, verifier::Verifier, N};
 use mixnet_rust::groups::Group;
 use std::time::Instant;
 
 fn main() {
     let (p, q, g) = get_group_params();
-    let group = U32ModGroup::new(p, q, g);
+    let group = BigIntModGroup::new(p, q, g);
 
     println!("N = {:?}", N);
 
     let (enc_keys, _sig_keys) = keys::keygen(group.clone());
 
-    let h_list: [U32ModElement; N] = core::array::from_fn(|_| group.random_element());
+    let h_list: [BigIntModElement; N] = core::array::from_fn(|_| group.random_element());
 
     let shuffler = Shuffler::new(group.clone(), h_list.clone(), enc_keys.pk.clone());
 
-    let plaintext_list: [U32ModElement; N] = core::array::from_fn(|i| { 
+    let plaintext_list: [BigIntModElement; N] = core::array::from_fn(|i| { 
         // Need to improve, but ok for numbers less than 1000 bits (because I removed (mod p))
         let val = (i as u32 + 1) * (i as u32 + 1);
-        group.deserialize_to_element(val.to_be_bytes().to_vec())
+        group.element_from_bytes(&val.to_be_bytes().to_vec())
     });
 
-    let ciphertext_list_1: [Ciphertext<U32ModGroup>; N] = core::array::from_fn(|i| {
+    let ciphertext_list_1: [Ciphertext<BigIntModGroup>; N] = core::array::from_fn(|i| {
         let r = group.random_scalar();
         enc_keys.encrypt(&plaintext_list[i], &r)
     });

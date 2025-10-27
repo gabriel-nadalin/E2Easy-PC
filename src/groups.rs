@@ -1,3 +1,4 @@
+pub mod bigint_mod;
 pub mod u32_mod;
 
 pub trait Scalar<G: Group>: Clone + PartialEq + std::fmt::Debug {

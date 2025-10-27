@@ -1,5 +1,5 @@
-use rand::random_range;
-use crate::{Number, NumberNZ, ModNumber, ModNumberParams};
+use sha2::{Digest, Sha256};
+use crate::{groups::Group, ModNumber, ModNumberParams, Number, NumberNZ};
 use crypto_bigint::{RandomMod, rand_core::OsRng};
 
 pub fn get_group_params() -> (ModNumberParams, NumberNZ, ModNumber) {
@@ -17,4 +17,16 @@ pub fn get_group_params() -> (ModNumberParams, NumberNZ, ModNumber) {
     }
     let g = ModNumber::new(&temp_g, p).square(); 
     return (p, q, g)
+}
+
+pub fn derive_nonces<G: Group>(group: &G, seed: &[u8], count: usize) -> Vec<G::Scalar> {
+    let mut nonces = Vec::with_capacity(count);
+    for i in 0..count {
+        let mut hasher = Sha256::new();
+        hasher.update(seed);
+        hasher.update(i.to_be_bytes());
+        let hash = hasher.finalize();
+        nonces.push(group.scalar_from_bytes(&hash));
+    }
+    nonces
 }

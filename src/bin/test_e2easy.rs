@@ -1,12 +1,8 @@
-use mixnet_rust::{e2easy::E2Easy, groups::{u32_mod::U32ModGroup, Element, Group, Scalar}, types::{TrackingCode, Vote}, utils::{derive_nonces, modexp, safe_prime}, Ciphertext};
-use rand::random_range;
+use mixnet_rust::{e2easy::E2Easy, groups::{u32_mod::U32ModGroup, Element, Group, Scalar}, types::{TrackingCode, Vote}, utils::{derive_nonces}, Ciphertext};
 use sha2::{Digest, Sha256};
 
 fn main() {
-    let (p, q) = safe_prime(2_u32.pow(31)).unwrap();
-    let mut g = random_range(2..p-1);
-    g = modexp(g, 2, p);
-
+    let (p, q, g) = U32ModGroup::get_group_params();
     let group = U32ModGroup::new(p, q, g);
 
     let mut e2easy = E2Easy::new(group.clone());
