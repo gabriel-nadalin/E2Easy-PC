@@ -9,12 +9,12 @@ pub struct SignatureKeys {
 }
 
 pub struct EncryptionKeys<G: Group> {
-    pub sk: SecretKey<G>,
+    sk: SecretKey<G>,
     pub pk: PublicKey<G>,
 }
 
 pub struct SecretKey<G: Group> {
-    pub scalar: G::Scalar,
+    scalar: G::Scalar,
 }
 
 #[derive(Debug, Clone, Copy)]

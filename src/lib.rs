@@ -1,8 +1,4 @@
-use std::fmt;
-
 use crypto_bigint::{Uint, NonZero, modular::{MontyForm, MontyParams}};
-
-use crate::groups::traits::Group;
 
 pub mod e2easy;
 pub mod types;

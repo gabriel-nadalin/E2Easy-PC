@@ -4,7 +4,7 @@ use chrono::Utc;
 
 use sha2::{Digest, Sha256};
 use ed25519_dalek::Signature;
-use crate::{groups::traits::{Element, Group, Scalar}, keys::{self, EncryptionKeys, SignatureKeys}, shuffler::Shuffler, types::*, utils::derive_nonces};
+use crate::{groups::traits::{Group, Scalar}, keys::{self, EncryptionKeys, SignatureKeys}, shuffler::Shuffler, types::*, utils::derive_nonces};
 
 pub struct E2Easy<G: Group> {
     pub group: Arc<G>,
@@ -60,7 +60,7 @@ impl<G: Group> E2Easy<G> {
             let encoded_vote = self.group.element_from_bytes(&vote.to_bytes());
             let encrypted_vote = self.enc_keys.encrypt(&encoded_vote, &nonce);
 
-            to_hash.extend_from_slice(&[encrypted_vote.c1().to_bytes(), encrypted_vote.c2().to_bytes()].concat());
+            to_hash.extend_from_slice(&encrypted_vote.to_bytes());
 
             self.votes.push(vote.clone());
             self.enc_votes.push(encrypted_vote);
