@@ -48,6 +48,6 @@ fn main() {
     println!("Mixing time: {:?}", verify_time);
     println!("result: {result}");
 
-    // let decrypted_list: [Number; N] = core::array::from_fn(|i| enc_keys.sk.decrypt(&ciphertext_list_2[i].clone()).value.retrieve());
+    // let decrypted_list: [BigIntModElement; N] = core::array::from_fn(|i| enc_keys.sk.decrypt(&ciphertext_list_2[i].clone()));
     // println!("shuffled & decrypted: {:?}", decrypted_list);
 }
