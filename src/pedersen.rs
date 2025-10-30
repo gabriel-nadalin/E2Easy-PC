@@ -1,4 +1,4 @@
-use crate::{groups::traits::{Element, Group, Scalar}};//, keys::PublicKey
+use crate::{groups::traits::{Element, Group}};//, keys::PublicKey
 use std::sync::Arc;
 
 pub struct Pedersen<G: Group> {
@@ -43,7 +43,7 @@ impl<G: Group> Pedersen<G> {
         return *commit == commit_prime
     }
 
-    pub fn verify_list (&self, commit_list: &Vec<G::Element>, r_list: &Vec<G::Scalar>, plaintext_list: &Vec<G::Element>) -> bool {
+    pub fn verify_list (&self, plaintext_list: &Vec<G::Element>, r_list: &Vec<G::Scalar>, commit_list: &Vec<G::Element>) -> bool {
         let n = r_list.len();
         let mut result: bool = true;
 

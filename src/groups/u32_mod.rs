@@ -107,6 +107,13 @@ impl Element<U32ModGroup> for U32ModElement {
     fn group(&self) -> U32ModGroup {
         (*self.group).clone()
     }
+
+    fn to_scalar(&self) -> U32ModScalar {
+        U32ModScalar {
+            value: self.value,
+            group: self.group.clone(),
+        }
+    }
 }
 
 impl Group for U32ModGroup {

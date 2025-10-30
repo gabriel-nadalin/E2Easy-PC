@@ -1,0 +1,48 @@
+N = 10
+Mixing time: 1.091753085
+Verify time: 1.120795898
+Commits verify time: 0.251958441
+N = 50
+Mixing time: 5.225381522
+Verify time: 4.916549632
+Commits verify time: 1.249146887
+N = 100
+Mixing time: 10.521208459
+Verify time: 9.85793304
+Commits verify time: 2.550961324
+N = 200
+Mixing time: 20.681202921
+Verify time: 23.638630924
+Commits verify time: 5.020626294
+N = 300
+Mixing time: 31.597035659
+Verify time: 29.140042283
+Commits verify time: 7.403835707
+N = 400
+Mixing time: 42.564422572
+Verify time: 39.67449009
+Commits verify time: 9.842734698
+N = 500
+Mixing time: 53.563722007
+Verify time: 50.35505014
+Commits verify time: 12.379390594
+N = 1000
+Mixing time: 114.060766811
+Verify time: 106.979723366
+Commits verify time: 24.720999449
+N = 1500
+Mixing time: 180.055044977
+Verify time: 172.492653939
+Commits verify time: 37.74729847
+N = 2000
+Mixing time: 256.711016255
+Verify time: 242.407928525
+Commits verify time: 49.984996012
+N = 2500
+Mixing time: 334.091408319
+Verify time: 320.029169692
+Commits verify time: 63.774736537
+N = 3000
+Mixing time: 418.669973528
+Verify time: 407.733970852
+Commits verify time: 74.321943185

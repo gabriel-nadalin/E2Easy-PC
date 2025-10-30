@@ -42,7 +42,7 @@ impl<G: Group> fmt::Debug for Ciphertext<G> {
 
 #[derive(Clone, PartialEq)]
 pub struct ShuffleProof<G: Group> {
-    t: (G::Element, G::Element, G::Element, (G::Element, G::Element), Vec<G::Element>),
+    t: (G::Element, G::Element, G::Element, G::Element, Vec<G::Element>),
     s: (G::Scalar, G::Scalar, G::Scalar, G::Scalar, Vec<G::Scalar>, Vec<G::Scalar>),
     c_list: Vec<G::Element>,
     c_hat_list: Vec<G::Element>
@@ -50,7 +50,7 @@ pub struct ShuffleProof<G: Group> {
 
 impl<G: Group> ShuffleProof<G> {
     pub fn new(
-        t: (G::Element, G::Element, G::Element, (G::Element, G::Element), Vec<G::Element>),
+        t: (G::Element, G::Element, G::Element, G::Element, Vec<G::Element>),
         s: (G::Scalar, G::Scalar, G::Scalar, G::Scalar, Vec<G::Scalar>, Vec<G::Scalar>),
         c_list: Vec<G::Element>,
         c_hat_list: Vec<G::Element>
@@ -64,7 +64,7 @@ impl<G: Group> ShuffleProof<G> {
     }
 
     pub fn components(&self) -> (
-        &(G::Element, G::Element, G::Element, (G::Element, G::Element), Vec<G::Element>),
+        &(G::Element, G::Element, G::Element, G::Element, Vec<G::Element>),
         &(G::Scalar, G::Scalar, G::Scalar, G::Scalar, Vec<G::Scalar>, Vec<G::Scalar>),
         &Vec<G::Element>,
         &Vec<G::Element>,

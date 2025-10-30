@@ -110,6 +110,13 @@ impl Element<BigIntModGroup> for BigIntModElement {
     fn group(&self) -> BigIntModGroup {
         (*self.group).clone()
     }
+
+    fn to_scalar(&self) -> BigIntModScalar {
+        BigIntModScalar {
+            value: self.value.retrieve(),
+            group: self.group.clone(),
+        }
+    }
 }
 
 impl Group for BigIntModGroup {

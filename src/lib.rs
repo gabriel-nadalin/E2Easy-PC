@@ -1,6 +1,6 @@
 use crypto_bigint::{Uint, NonZero, modular::{MontyForm, MontyParams}};
 
-pub mod e2easy;
+// pub mod e2easy;
 pub mod types;
 pub mod keys;
 pub mod utils;
