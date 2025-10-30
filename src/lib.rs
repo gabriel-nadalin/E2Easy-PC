@@ -5,6 +5,7 @@ pub mod types;
 pub mod keys;
 pub mod utils;
 pub mod groups;
+pub mod pedersen;
 pub mod shuffler;
 pub mod verifier;
 pub mod io_helpers;
