@@ -1,10 +1,10 @@
 use std::fmt;
 use std::sync::Arc;
 
-use crypto_bigint::{RandomMod, rand_core::OsRng};
+use crypto_bigint::{RandomMod, rand_core::OsRng, modular::ConstMontyParams};
 
 use crate::groups::traits::{Element, Group, Scalar};
-use crate::{Number, NumberNZ, ModNumber, ModNumberParams, SIZE};
+use crate::{P, Number, NumberNZ, ModNumber, SIZE};
 
 
 #[derive(Clone, PartialEq)]
@@ -21,7 +21,6 @@ pub struct BigIntModElement {
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct BigIntModGroup {
-    pub p: ModNumberParams,
     pub q: NumberNZ,
     pub g: ModNumber,
 }
@@ -57,7 +56,7 @@ impl Scalar<BigIntModGroup> for BigIntModScalar {
     }
     
     fn inv(&self) -> Self {
-        let inv = self.value.inv_mod(&self.group.p.modulus().as_nz_ref())
+        let inv = self.value.inv_mod(&P::MODULUS.as_nz_ref())
             .expect("No modular inverse exists for this value");
         BigIntModScalar {
             value: inv,
@@ -78,7 +77,8 @@ impl Element<BigIntModGroup> for BigIntModElement {
 
     // Aqui, atua como operador entre dois elementos de um grupo multiplicativo (Z_p*), por isso multiplicacao e nao adicao
     fn add(&self, other: &Self) -> Self {
-        assert_eq!(self.group.p, other.group.p, "Elements must be from the same group");
+        // No longer makes sense
+        // assert_eq!(self.group.p::MODULUS, other.group.p::MODULUS, "Elements must be from the same group");
         BigIntModElement {
             value: self.value.mul(&other.value),
             group: self.group.clone(),
@@ -125,7 +125,7 @@ impl Group for BigIntModGroup {
 
     fn identity(&self) -> Self::Element {
         BigIntModElement {
-            value: ModNumber::one(self.p),
+            value: ModNumber::new(&Number::ONE),
             group: Arc::new(self.clone()),
         }
     }
@@ -148,12 +148,12 @@ impl Group for BigIntModGroup {
         // Asserts you don't get the value 1
         let mut rand: Number;
         loop {
-            rand = Number::random_mod(&mut OsRng, &self.p.modulus().as_nz_ref());
+            rand = Number::random_mod(&mut OsRng, &P::MODULUS.as_nz_ref());
             if rand > Number::ONE {
                 break;
             }
         }
-        let element_rand = ModNumber::new(&rand, self.p).square(); 
+        let element_rand = ModNumber::new(&rand).square(); 
         BigIntModElement {
             value: element_rand,
             group: Arc::new(self.clone()),
@@ -188,7 +188,7 @@ impl Group for BigIntModGroup {
             arr[SIZE/8-1 - i] = *val;
         }
         BigIntModElement {
-            value: ModNumber::new(&Number::from_be_slice(&arr), self.p),
+            value: ModNumber::new(&Number::from_be_slice(&arr)),
             group: Arc::new(self.clone()),
         }
     }
@@ -218,7 +218,7 @@ impl fmt::Debug for BigIntModScalar {
 }
 
 impl BigIntModGroup {
-    pub fn new(p: ModNumberParams, q: NumberNZ, g: ModNumber) -> Arc<Self> {
-        Arc::new(BigIntModGroup { p, q, g })
+    pub fn new(q: NumberNZ, g: ModNumber) -> Arc<Self> {
+        Arc::new(BigIntModGroup { q, g })
     }
 }

@@ -3,8 +3,8 @@ use mixnet_rust::groups::traits::Group;
 use std::time::Instant;
 
 fn main() {
-    let (p, q, g) = get_group_params();
-    let group = BigIntModGroup::new(p, q, g);
+    let (q, g) = get_group_params();
+    let group = BigIntModGroup::new(q, g);
     println!("N = {:?}", N);
 
     // let (enc_keys, _sig_keys) = keys::keygen(group.clone());
