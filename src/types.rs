@@ -1,8 +1,9 @@
 use std::fmt;
 
-use crate::groups::traits::{Element, Group};
+use crate::{Scalar, Element};
 
 
+/*
 #[derive(Clone, PartialEq)]
 pub struct Ciphertext<G: Group> {
     c1: G::Element,
@@ -39,21 +40,22 @@ impl<G: Group> fmt::Debug for Ciphertext<G> {
         write!(f, "({:?},{:?})", self.c1, self.c2)
     }
 }
+*/
 
 #[derive(Clone, PartialEq)]
-pub struct ShuffleProof<G: Group> {
-    t: (G::Element, G::Element, G::Element, (G::Element, G::Element), Vec<G::Element>),
-    s: (G::Scalar, G::Scalar, G::Scalar, G::Scalar, Vec<G::Scalar>, Vec<G::Scalar>),
-    c_list: Vec<G::Element>,
-    c_hat_list: Vec<G::Element>
+pub struct ShuffleProof {
+    t: (Element, Element, Element, Element, Vec<Element>),
+    s: (Scalar, Scalar, Scalar, Scalar, Vec<Scalar>, Vec<Scalar>),
+    c_list: Vec<Element>,
+    c_hat_list: Vec<Element>
 }
 
-impl<G: Group> ShuffleProof<G> {
+impl ShuffleProof {
     pub fn new(
-        t: (G::Element, G::Element, G::Element, (G::Element, G::Element), Vec<G::Element>),
-        s: (G::Scalar, G::Scalar, G::Scalar, G::Scalar, Vec<G::Scalar>, Vec<G::Scalar>),
-        c_list: Vec<G::Element>,
-        c_hat_list: Vec<G::Element>
+        t: (Element, Element, Element, Element, Vec<Element>),
+        s: (Scalar, Scalar, Scalar, Scalar, Vec<Scalar>, Vec<Scalar>),
+        c_list: Vec<Element>,
+        c_hat_list: Vec<Element>
     ) -> Self {
         Self {
             t,
@@ -64,16 +66,16 @@ impl<G: Group> ShuffleProof<G> {
     }
 
     pub fn components(&self) -> (
-        &(G::Element, G::Element, G::Element, (G::Element, G::Element), Vec<G::Element>),
-        &(G::Scalar, G::Scalar, G::Scalar, G::Scalar, Vec<G::Scalar>, Vec<G::Scalar>),
-        &Vec<G::Element>,
-        &Vec<G::Element>,
+        &(Element, Element, Element, Element, Vec<Element>),
+        &(Scalar, Scalar, Scalar, Scalar, Vec<Scalar>, Vec<Scalar>),
+        &Vec<Element>,
+        &Vec<Element>,
     ) {
         (&self.t, &self.s, &self.c_list, &self.c_hat_list)
     }
 }
 
-impl<G: Group> fmt::Debug for ShuffleProof<G> {
+impl fmt::Debug for ShuffleProof {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", format!("({:?},{:?},{:?},{:?})", self.t, self.s, self.c_list, self.c_hat_list).replace(" ", ""))
     }
@@ -99,23 +101,23 @@ impl Vote {
 }
 
 #[derive(Clone, PartialEq, Debug)]
-pub struct Ballot<G: Group> {
+pub struct Ballot {
     pub tracking_code: TrackingCode,
-    pub enc_votes: Vec<Ciphertext<G>>,
+    pub enc_votes: Vec<Element>,
     pub timestamp: String,
 }
 
 #[derive(Clone, PartialEq, Debug)]
-pub struct VoteTable<G: Group> {
-    entries: Vec<Ballot<G>>,
+pub struct VoteTable {
+    entries: Vec<Ballot>,
 }
 
-impl<G: Group> VoteTable<G> {
+impl VoteTable {
     pub fn new() -> Self {
         Self { entries: Vec::new() }
     }
 
-    pub fn add_entry(&mut self, entry: Ballot<G>) {
+    pub fn add_entry(&mut self, entry: Ballot) {
         self.entries.push(entry);
     }
 
@@ -123,7 +125,7 @@ impl<G: Group> VoteTable<G> {
         &self.entries.last().unwrap().tracking_code
     }
 
-    pub fn votes(&self) -> Vec<Ciphertext<G>> {
+    pub fn votes(&self) -> Vec<Element> {
         self.entries.iter().flat_map(|entry| entry.enc_votes.clone()).collect()
     }
 }

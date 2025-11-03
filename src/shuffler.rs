@@ -1,22 +1,18 @@
-use crate::{groups::traits::{Element, Group, Scalar}, keys::PublicKey, types::{Ciphertext, ShuffleProof}};
-use rand::random_range;
-use std::sync::Arc;
+use crate::{Scalar, Element, G, utils::*, types::ShuffleProof};
 use sha2::{Digest, Sha256};
+use rand::random_range;
 
-pub struct Shuffler<G: Group> {
-    group: Arc<G>,
-    h_list: Vec<G::Element>,
-    pk: PublicKey<G>,
+pub struct Shuffler {
+    h_list: Vec<Element>,
+    // pk: PublicKey<G>,
     n: usize,
 }
 
-impl<G: Group> Shuffler<G> {
-    pub fn new(group: Arc<G>, h_list: Vec<G::Element>, pk: &PublicKey<G>) -> Self {
+impl Shuffler {
+    pub fn new(h_list: Vec<Element>) -> Self {
         let n = h_list.len();
         Self {
-            group,
             h_list,
-            pk: pk.clone(),
             n,
         }
     }
@@ -34,42 +30,39 @@ impl<G: Group> Shuffler<G> {
         return psi
     }
 
-    pub fn gen_shuffle(&self, e_list: &[Ciphertext<G>]) -> (Vec<Ciphertext<G>>, Vec<G::Scalar>, Vec<usize>) {
-        assert_eq!(e_list.len(), self.n, "e_list must have size {}", self.n);
+    pub fn gen_shuffle(&self, commit_list: &Vec<Element>) -> (Vec<Element>, Vec<Scalar>, Vec<usize>) {
+        assert_eq!(commit_list.len(), self.n, "commit_list must have size {}", self.n);
 
-        let mut e_prime_list = Vec::new();
-        let mut e_prime_tmp = Vec::new();
+        let mut recommit_list = Vec::new();
+        let mut recommit_tmp = Vec::new();
         let mut r_prime_list = Vec::new();
         let psi = self.gen_permutation();
 
         for i in 0..self.n {
-            let (a, b) = e_list[i].components();
+            let r_prime = random_scalar();
+            let c0 = G * r_prime; // I guess no need to multiply for h^0, since it is 1, right?
+            let recommit = commit_list[i] + c0;
 
-            let r_prime = self.group.random_scalar();
-            let a_prime = a.add(&self.pk.element.mul_scalar(&r_prime));
-            let b_prime = b.add(&self.group.mul_generator(&r_prime));
-            let e_prime = Ciphertext::new(a_prime, b_prime);
-
-            e_prime_tmp.push(e_prime);
+            recommit_tmp.push(recommit);
             r_prime_list.push(r_prime);
         }
 
         for i in 0..self.n {
-            e_prime_list.push(e_prime_tmp[psi[i]].clone());
+            recommit_list.push(recommit_tmp[psi[i]].clone());
         }
 
-        return (e_prime_list, r_prime_list, psi)
+        return (recommit_list, r_prime_list, psi)
     }
 
-    pub fn gen_commitment(&self, psi: &[usize]) -> (Vec<G::Element>, Vec<G::Scalar>) {
+    pub fn gen_commitment(&self, psi: &[usize]) -> (Vec<Element>, Vec<Scalar>) {
         assert_eq!(psi.len(), self.n, "psi must have size {}", self.n);
 
-        let mut r_list = vec![self.group.zero(); self.n];
-        let mut c_list = vec![self.group.identity(); self.n];
+        let mut r_list = vec![Scalar::ZERO; self.n];
+        let mut c_list = vec![Element::IDENTITY; self.n];
 
         for i in 0..self.n {
-            let r = self.group.random_scalar();
-            let c = self.group.mul_generator(&r).add(&self.h_list[i]);
+            let r = random_scalar();
+            let c = (G * r) + self.h_list[i];
 
             r_list[psi[i]] = r;
             c_list[psi[i]] = c;
@@ -78,15 +71,20 @@ impl<G: Group> Shuffler<G> {
         return (c_list, r_list)
     }
 
-    pub fn gen_commitment_chain(&self, c0: &G::Element, u_list: &[G::Scalar]) -> (Vec<G::Element>, Vec<G::Scalar>) {
+    pub fn gen_commitment_chain(&self, c0: &Element, u_list: &[Scalar]) -> (Vec<Element>, Vec<Scalar>) {
         assert_eq!(u_list.len(), self.n, "u_list must have size {}", self.n);
 
         let mut r_list = Vec::new();
-        let mut c_list: Vec<G::Element> = Vec::new();
+        let mut c_list: Vec<Element> = Vec::new();
 
         for i in 0..self.n {
-            let r = self.group.random_scalar();
-            let c = self.group.mul_generator(&r).add(&(if i == 0 {c0.clone()} else {c_list[i-1].clone()}).mul_scalar(&u_list[i]));
+            let r = random_scalar();
+            let c: Element;
+            if i == 0 {
+                c = (G * r) + (*c0 * u_list[i]);
+            } else {
+                c = (G * r) + (c_list[i-1] * u_list[i]);
+            }
 
             r_list.push(r);
             c_list.push(c);
@@ -97,13 +95,13 @@ impl<G: Group> Shuffler<G> {
 
     pub fn gen_proof(
         &self,
-        e_list: &[Ciphertext<G>],
-        e_prime_list: &[Ciphertext<G>],
-        r_prime_list: &[G::Scalar],
+        commit_list: &Vec<Element>,
+        commit_prime_list: &Vec<Element>,
+        r_prime_list: &Vec<Scalar>,
         psi: &[usize]
-    ) -> ShuffleProof<G> {
-        assert_eq!(e_list.len(), self.n, "e_list must have size {}", self.n);
-        assert_eq!(e_prime_list.len(), self.n, "e_prime_list must have size {}", self.n);
+    ) -> ShuffleProof {
+        assert_eq!(commit_list.len(), self.n, "commit_list must have size {}", self.n);
+        assert_eq!(commit_prime_list.len(), self.n, "commit_prime_list must have size {}", self.n);
         assert_eq!(r_prime_list.len(), self.n, "r_prime_list must have size {}", self.n);
         assert_eq!(psi.len(), self.n, "psi must have size {}", self.n);
         
@@ -113,82 +111,75 @@ impl<G: Group> Shuffler<G> {
         for i in 0..self.n {
             // IMPORTANTE
             // TODO: definir forma canonica de serializacao para hash com formato consistente
-            u_list.push(self.group.scalar_from_bytes(&Sha256::digest(format!("(({:?},{:?},{:?}),{:?})", e_list, e_prime_list, c_list, i).replace(" ", "").as_bytes())));
+            u_list.push(scalar_from_bytes(&Sha256::digest(format!("(({:?},{:?},{:?}),{:?})", commit_list, commit_prime_list, c_list, i).replace(" ", "").as_bytes()))); // Shoul it be commit_list[i] and similar?
         }
 
-        let u_prime_list: Vec<G::Scalar> = psi.iter().map(|&i| u_list[i].clone()).collect();
+        let u_prime_list: Vec<Scalar> = (0..self.n).map(|i| u_list[psi[i]].clone()).collect();
 
         let (c_hat_list, r_hat_list) = self.gen_commitment_chain(&self.h_list[0], &u_prime_list);
 
-        let mut r_bar = self.group.zero();
+        let mut r_bar = Scalar::ZERO;
         for i in 0..self.n {
-            r_bar = r_bar.add(&r_list[i]);
+            r_bar = r_bar + r_list[i];
         }
 
-        let mut v_list = vec![self.group.zero(); self.n];
-        v_list[self.n - 1] = self.group.one();
+        let mut v_list = vec![Scalar::ZERO; self.n];
+        v_list[self.n - 1] = Scalar::ONE;
         for i in (0..self.n-1).rev() {
-            v_list[i] = u_prime_list[i+1].mul(&v_list[i+1]);
+            v_list[i] = u_prime_list[i+1] * v_list[i+1];
         }
 
-        let mut r_hat = self.group.zero();
-        let mut r_tilde = self.group.zero();
-        let mut r_prime = self.group.zero();
+        let mut r_hat = Scalar::ZERO;
+        let mut r_tilde = Scalar::ZERO;
+        let mut r_prime = Scalar::ZERO;
         for i in 0..self.n {
-            r_hat = r_hat.add(&r_hat_list[i].mul(&v_list[i]));
-            r_tilde = r_tilde.add(&r_list[i].mul(&u_list[i]));
-            r_prime = r_prime.add(&r_prime_list[i].mul(&u_list[i]));
+            r_hat = r_hat + (r_hat_list[i] * v_list[i]);
+            r_tilde = r_tilde + (r_list[i] * u_list[i]);
+            r_prime = r_prime + (r_prime_list[i] * u_list[i]);
         }
 
-        let w_list: Vec<G::Scalar> = (0..4).map(|_| self.group.random_scalar()).collect();
-        let w_hat_list: Vec<G::Scalar> = (0..self.n).map(|_| self.group.random_scalar()).collect();
-        let w_prime_list: Vec<G::Scalar> = (0..self.n).map(|_| self.group.random_scalar()).collect();
+        let w_list: Vec<Scalar> = (0..4).map(|_| random_scalar()).collect();
+        let w_hat_list: Vec<Scalar> = (0..self.n).map(|_| random_scalar()).collect();
+        let w_prime_list: Vec<Scalar> = (0..self.n).map(|_| random_scalar()).collect();
 
-        let t0 = self.group.mul_generator(&w_list[0]);
-        let t1 = self.group.mul_generator(&w_list[1]);
-        let t2 = self.group.mul_generator(&w_list[2]).add(
-            &self.h_list
+        let t0 = G * w_list[0];
+        let t1 = G * w_list[1];
+        let t2 = (G * w_list[2]) +  self.h_list
                 .iter()
                 .zip(w_prime_list.iter())
-                .map(|(h, w_prime)| h.mul_scalar(w_prime))   // each h_i^{w'_i}
-                .fold(self.group.identity(), |acc, x| acc.add(&x))
-        );
-        let t3_0 = self.pk.element.mul_scalar(&w_list[3]).inv().add(
-            &e_prime_list
+                .map(|(h, w_prime)| h * w_prime)   // each h_i^{w'_i}
+                .fold(Element::IDENTITY, |acc, x| acc + x); // I feel like it can be done without id sum...
+        let t3 = -(G * w_list[3]) + commit_prime_list
                 .iter()
                 .zip(w_prime_list.iter())
-                .map(|(e_prime, w_prime)| e_prime.c1().mul_scalar(w_prime))
-                .fold(self.group.identity(), |acc, x| acc.add(&x))
-        );
-        let t3_1 = self.group.mul_generator(&w_list[3]).inv().add(
-            &e_prime_list
-                .iter()
-                .zip(w_prime_list.iter())
-                .map(|(e_prime, w_prime)| e_prime.c2().mul_scalar(w_prime))
-                .fold(self.group.identity(), |acc, x| acc.add(&x))
-        );
+                .map(|(e_prime, w_prime)| e_prime * w_prime)
+                .fold(Element::IDENTITY, |acc, x| acc + x); // I feel like it can be done without id sum...
 
         let mut t_hat_list = Vec::new();
         for i in 0..self.n {
-            t_hat_list.push(self.group.mul_generator(&w_hat_list[i]).add(&(if i == 0 {self.h_list[0].clone()} else {c_hat_list[i-1].clone()}).mul_scalar(&w_prime_list[i])));
+            if i == 0 {
+                t_hat_list.push((G * w_hat_list[i]) + (self.h_list[0] * w_prime_list[i]));
+            } else {
+                t_hat_list.push((G * w_hat_list[i]) + (c_hat_list[i-1] * w_prime_list[i]));
+            }
         }
 
-        let y = (e_list, e_prime_list, c_list.clone(), c_hat_list.clone(), self.pk.element.clone());
-        let t = (t0, t1, t2, (t3_0, t3_1), t_hat_list);
+        let y = (commit_list, commit_prime_list, c_list.clone(), c_hat_list.clone());
+        let t = (t0, t1, t2, t3, t_hat_list);
         // IMPORTANTE
         // TODO: definir forma canonica de serializacao para hash com formato consistente
-        let c = self.group.scalar_from_bytes(&Sha256::digest(format!("({:?},{:?})", y, t).replace(" ", "").as_bytes()));
+        let c = scalar_from_bytes(&Sha256::digest(format!("({:?},{:?})", y, t).replace(" ", "").as_bytes()));
 
-        let s0 = w_list[0].add(&c.mul(&r_bar));
-        let s1 = w_list[1].add(&c.mul(&r_hat));
-        let s2 = w_list[2].add(&c.mul(&r_tilde));
-        let s3 = w_list[3].add(&c.mul(&r_prime));
+        let s0 = w_list[0] + (c * &r_bar);
+        let s1 = w_list[1] + (c * &r_hat);
+        let s2 = w_list[2] + (c * &r_tilde);
+        let s3 = w_list[3] + (c * &r_prime);
 
         let mut s_hat_list = Vec::new();
         let mut s_prime_list = Vec::new();
         for i in 0..self.n {
-            s_hat_list.push(w_hat_list[i].add(&c.mul(&r_hat_list[i])));
-            s_prime_list.push(w_prime_list[i].add(&c.mul(&u_prime_list[i])));
+            s_hat_list.push(w_hat_list[i] + (c * r_hat_list[i]));
+            s_prime_list.push(w_prime_list[i] + (c * u_prime_list[i]));
         }
         let s = (s0, s1, s2, s3, s_hat_list, s_prime_list);
         return ShuffleProof::new(t, s, c_list, c_hat_list)
