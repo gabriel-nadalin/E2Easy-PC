@@ -29,8 +29,6 @@ pub trait Element<G: Group>: Clone + PartialEq + std::fmt::Debug {
     fn to_bytes(&self) -> Vec<u8>;
 
     fn group(&self) -> G;
-
-    fn to_scalar(&self) -> G::Scalar;
 }
 
 pub trait Group: Clone + PartialEq + std::fmt::Debug {

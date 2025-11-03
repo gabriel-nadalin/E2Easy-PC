@@ -16,7 +16,7 @@ fn main() {
     let plaintext_list: Vec<_> = (0..N).map(|i| { 
         // Need to improve, but ok for numbers less than 1000 bits (because I removed (mod p))
         let val = (i as u32 + 1) * (i as u32 + 1);
-        group.element_from_bytes(&val.to_be_bytes().to_vec())
+        group.scalar_from_bytes(&val.to_be_bytes().to_vec())
     }).collect();
 
     let pedersen = Pedersen::new(group.clone());

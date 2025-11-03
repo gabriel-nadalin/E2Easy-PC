@@ -18,19 +18,19 @@ impl<G: Group> Pedersen<G> {
         }
     }
 
-    pub fn commit (&self, plaintext: &G::Element) -> (G::Element, G::Scalar) {
+    pub fn commit (&self, plaintext: &G::Scalar) -> (G::Element, G::Scalar) {
         let r = self.group.random_scalar();
-        let c = self.group.mul_generator(&r).add(&self.h.mul_scalar(&plaintext.to_scalar()));
+        let c = self.group.mul_generator(&r).add(&self.h.mul_scalar(&plaintext));
         return (c, r)
     }
 
-    pub fn commit_list (&self, h_list: &Vec<G::Element>) -> (Vec<G::Element>, Vec<G::Scalar>) {
+    pub fn commit_list (&self, plaintext_list: &Vec<G::Scalar>) -> (Vec<G::Element>, Vec<G::Scalar>) {
         let mut commit_list = Vec::new();
         let mut r_list = Vec::new();
-        let n = h_list.len();
+        let n = plaintext_list.len();
 
         for i in 0..n {
-            let (c, r) = self.commit(&h_list[i]);
+            let (c, r) = self.commit(&plaintext_list[i]);
             commit_list.push(c);
             r_list.push(r);
         }
@@ -38,17 +38,17 @@ impl<G: Group> Pedersen<G> {
         return (commit_list, r_list)
     }
 
-    pub fn verify (&self, commit: &G::Element, r: &G::Scalar, plaintext: &G::Element) -> bool {
-        let commit_prime = self.group.mul_generator(&r).add(&self.h.mul_scalar(&plaintext.to_scalar()));
+    pub fn verify (&self, plaintext: &G::Scalar, r: &G::Scalar, commit: &G::Element) -> bool {
+        let commit_prime = self.group.mul_generator(&r).add(&self.h.mul_scalar(&plaintext));
         return *commit == commit_prime
     }
 
-    pub fn verify_list (&self, plaintext_list: &Vec<G::Element>, r_list: &Vec<G::Scalar>, commit_list: &Vec<G::Element>) -> bool {
+    pub fn verify_list (&self, plaintext_list: &Vec<G::Scalar>, r_list: &Vec<G::Scalar>, commit_list: &Vec<G::Element>) -> bool {
         let n = r_list.len();
         let mut result: bool = true;
 
         for i in 0..n {
-            result = self.verify(&commit_list[i], &r_list[i], &plaintext_list[i]);
+            result = self.verify(&plaintext_list[i], &r_list[i], &commit_list[i]);
             if result == false {
                 break;
             }
