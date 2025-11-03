@@ -4,16 +4,17 @@ use chrono::Utc;
 
 use sha2::{Digest, Sha256};
 use ed25519_dalek::Signature;
-use crate::{groups::traits::{Group, Scalar}, keys::{self, EncryptionKeys, SignatureKeys}, shuffler::Shuffler, types::*, utils::derive_nonces};
+// use crate::{groups::traits::{Group, Scalar}, keys::{self, EncryptionKeys, SignatureKeys}, shuffler::Shuffler, types::*, utils::derive_nonces};
+use crate::{Scalar, Element, shuffler::Shuffler, utils::*, types::*};
 
-pub struct E2Easy<G: Group> {
-    pub group: Arc<G>,
-    pub enc_keys: EncryptionKeys<G>,
-    sig_keys: SignatureKeys,
-    pub vote_table: VoteTable<G>,
+pub struct E2Easy {
+    // pub group: Arc<G>,
+    // pub enc_keys: EncryptionKeys<G>,
+    // sig_keys: SignatureKeys,
+    pub vote_table: VoteTable,
     votes: Vec<Vote>,
-    nonce_seed: G::Scalar,
-    enc_votes: Vec<Ciphertext<G>>,
+    nonce_seed: Scalar,
+    enc_votes: Vec<Element>,
     timestamp: String,
     tracking_code: TrackingCode,
     prev_tracking_code: TrackingCode,
@@ -23,15 +24,15 @@ pub struct E2Easy<G: Group> {
 
 impl<G: Group> E2Easy<G> {
     // seria possivel combinar setup() e start() em new()?
-    pub fn new(group: Arc<G>) -> Self {
-        let (enc_keys, sig_keys) = keys::keygen(group.clone());
+    pub fn new() -> Self {
+        // let (enc_keys, sig_keys) = keys::keygen(group.clone());
         Self {
-            group: group.clone(),
-            enc_keys,
-            sig_keys,
+            // group: group.clone(),
+            // enc_keys,
+            // sig_keys,
             vote_table: VoteTable::new(),
             votes: Vec::new(),
-            nonce_seed: group.zero(),
+            nonce_seed: Scalar::ZERO,
             enc_votes: Vec::new(),
             timestamp: "".to_string(),
             tracking_code: TrackingCode(Vec::new()),
@@ -48,8 +49,8 @@ impl<G: Group> E2Easy<G> {
     }
 
     pub fn vote(&mut self, votes: Vec<Vote>) -> (TrackingCode, String) {
-        self.nonce_seed = self.group.random_scalar();
-        let nonces = derive_nonces(&*self.group, &self.nonce_seed.to_bytes(), votes.len());
+        self.nonce_seed = random_scalar();
+        let nonces = derive_nonces(&self.nonce_seed.to_bytes(), votes.len());
 
         self.timestamp = Utc::now().to_rfc3339();
 
@@ -57,6 +58,7 @@ impl<G: Group> E2Easy<G> {
         to_hash.extend_from_slice(self.timestamp.as_bytes());
 
         for (vote, nonce) in votes.iter().zip(nonces) {
+            // Continue to adapt from here 
             let encoded_vote = self.group.element_from_bytes(&vote.to_bytes());
             let encrypted_vote = self.enc_keys.encrypt(&encoded_vote, &nonce);
 

@@ -1,32 +1,33 @@
+use p256::{elliptic_curve::PrimeField, FieldBytes, elliptic_curve::Field};
+use crate::{Scalar, Element, G, SIZE};
 use sha2::{Digest, Sha256};
-use crate::{groups::traits::Group, ModNumber, ModNumberParams, Number, NumberNZ};
-use crypto_bigint::{RandomMod, rand_core::OsRng};
+use rand_core::OsRng;
 
-pub fn get_group_params() -> (ModNumberParams, NumberNZ, ModNumber) {
-    // 256-bits example
-    // let p = ModNumberParams::new_vartime(Number::from_be_hex("BF4AAA250D7578E410D0DC2D68645146113D1CE9D9DD2D522BF403BF41405613").to_odd().unwrap());
-    // let q = Number::from_be_hex("5FA5551286BABC7208686E16B43228A3089E8E74ECEE96A915FA01DFA0A02B09").to_nz().unwrap();
-    let p = ModNumberParams::new_vartime(Number::from_be_hex("FFFFFFFFFFFFFFFFC90FDAA22168C234C4C6628B80DC1CD129024E088A67CC74020BBEA63B139B22514A08798E3404DDEF9519B3CD3A431B302B0A6DF25F14374FE1356D6D51C245E485B576625E7EC6F44C42E9A637ED6B0BFF5CB6F406B7EDEE386BFB5A899FA5AE9F24117C4B1FE649286651ECE45B3DC2007CB8A163BF0598DA48361C55D39A69163FA8FD24CF5F83655D23DCA3AD961C62F356208552BB9ED529077096966D670C354E4ABC9804F1746C08CA18217C32905E462E36CE3BE39E772C180E86039B2783A2EC07A28FB5C55DF06F4C52C9DE2BCBF6955817183995497CEA956AE515D2261898FA051015728E5A8AAAC42DAD33170D04507A33A85521ABDF1CBA64ECFB850458DBEF0A8AEA71575D060C7DB3970F85A6E1E4C7ABF5AE8CDB0933D71E8C94E04A25619DCEE3D2261AD2EE6BF12FFA06D98A0864D87602733EC86A64521F2B18177B200CBBE117577A615D6C770988C0BAD946E208E24FA074E5AB3143DB5BFCE0FD108E4B82D120A93AD2CAFFFFFFFFFFFFFFFF").to_odd().unwrap());
-    let q = Number::from_be_hex("7FFFFFFFFFFFFFFFE487ED5110B4611A62633145C06E0E68948127044533E63A0105DF531D89CD9128A5043CC71A026EF7CA8CD9E69D218D98158536F92F8A1BA7F09AB6B6A8E122F242DABB312F3F637A262174D31BF6B585FFAE5B7A035BF6F71C35FDAD44CFD2D74F9208BE258FF324943328F6722D9EE1003E5C50B1DF82CC6D241B0E2AE9CD348B1FD47E9267AFC1B2AE91EE51D6CB0E3179AB1042A95DCF6A9483B84B4B36B3861AA7255E4C0278BA3604650C10BE19482F23171B671DF1CF3B960C074301CD93C1D17603D147DAE2AEF837A62964EF15E5FB4AAC0B8C1CCAA4BE754AB5728AE9130C4C7D02880AB9472D45556216D6998B8682283D19D42A90D5EF8E5D32767DC2822C6DF785457538ABAE83063ED9CB87C2D370F263D5FAD7466D8499EB8F464A702512B0CEE771E9130D697735F897FD036CC504326C3B01399F643532290F958C0BBD90065DF08BABBD30AEB63B84C4605D6CA371047127D03A72D598A1EDADFE707E884725C16890549D69657FFFFFFFFFFFFFFF").to_nz().unwrap();
-    let mut temp_g: Number;
-    loop {
-        temp_g = Number::random_mod(&mut OsRng, &p.modulus().as_nz_ref());
-        if temp_g > Number::ONE {
-            break;
-        }
-    }
-    let g = ModNumber::new(&temp_g, p).square(); 
-    return (p, q, g)
+pub fn random_element() -> Element {
+    let randomizer: Scalar = Scalar::random(&mut OsRng);
+    return G * randomizer
 }
 
-pub fn derive_nonces<G: Group>(group: &G, seed: &[u8], count: usize) -> Vec<G::Scalar> {
+pub fn random_scalar() -> Scalar {
+    return Scalar::random(&mut OsRng)
+}
+
+pub fn scalar_from_bytes (bytes: &[u8]) -> Scalar {
+    let mut arr = [0; SIZE/8];
+    for (i, val) in bytes.into_iter().take(SIZE/8).rev().enumerate() {
+        arr[SIZE/8-1 - i] = *val;
+    }
+    return Scalar::from_repr(*FieldBytes::from_slice(&arr)).unwrap()
+}
+
+pub fn derive_nonces (seed: &[u8], count: usize) -> Vec<Scalar> {
     let mut nonces = Vec::with_capacity(count);
     for i in 0..count {
         let mut hasher = Sha256::new();
         hasher.update(seed);
         hasher.update(i.to_be_bytes());
         let hash = hasher.finalize();
-        nonces.push(group.scalar_from_bytes(&hash));
+        nonces.push(scalar_from_bytes(&hash));
     }
     nonces
 }
