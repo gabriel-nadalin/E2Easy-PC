@@ -22,21 +22,15 @@ impl Verifier {
         for i in 0..self.n {
             // IMPORTANTE
             // TODO: definir forma canonica de serializacao para hash com formato consistente
-            u_list.push(scalar_from_bytes(&Sha256::digest(format!("(({:?},{:?},{:?}),{:?})", commit_list, commit_prime_list, c_list, i).replace(" ", "").as_bytes()))); // Shoul it be commit_list[i] and similar?
+            u_list.push(scalar_from_bytes(&Sha256::digest(format!("(({:?},{:?},{:?}),{:?})", commit_list, commit_prime_list, c_list, i).replace(" ", "").as_bytes())));
         }
 
         let c_bar = c_list.iter().fold(Element::IDENTITY, |acc, x| acc + x) - self.h_list.iter().fold(Element::IDENTITY, |acc, x| acc + x);
         let u = u_list.iter().fold(Scalar::ONE, |acc, x| acc * x);
 
         let c_hat = c_hat_list[self.n-1] - (self.h_list[0] * u);
-        let c_tilde = c_list.iter()
-            .zip(u_list.iter())
-            .map(|(c, u)| c * u)
-            .fold(Element::IDENTITY, |acc, x| acc + x); // I feel like it can be done without id sum...
-        let e_prime = commit_list.iter()
-            .zip(u_list.iter())
-            .map(|(e, u)| e * u)
-            .fold(Element::IDENTITY, |acc, x| acc + x); // I feel like it can be done without id sum...
+        let c_tilde = summation((0..self.n).map(|i| c_list[i] * u_list[i]).collect());
+        let e_prime = summation((0..self.n).map(|i| commit_list[i] * u_list[i]).collect());
 
         let y = (commit_list, commit_prime_list, c_list, c_hat_list.clone());
         // IMPORTANTE
@@ -45,14 +39,8 @@ impl Verifier {
 
         let t_prime_0 = (G * s.0) - (c_bar * c);
         let t_prime_1 = (G * s.1) - (c_hat * c);
-        let t_prime_2 = -(c_tilde * c) + (G *s.2) + self.h_list.iter()
-            .zip(s.5.iter())
-            .map(|(h, s_prime)| h * s_prime)
-            .fold(Element::IDENTITY, |acc, x| acc + x); // I feel like it can be done without id sum...
-        let t_prime_3 = -(e_prime * c) - (G * s.3) + commit_prime_list.iter()
-            .zip(s.5.iter())
-            .map(|(e, s_prime)| e * s_prime)
-            .fold(Element::IDENTITY, |acc, x| acc + x); // I feel like it can be done without id sum...
+        let t_prime_2 = summation((0..self.n).map(|i| self.h_list[i] * s.5[i]).collect()) - (c_tilde * c) + (G * s.2);
+        let t_prime_3 = summation((0..self.n).map(|i| commit_prime_list[i] * s.5[i]).collect()) - (e_prime * c) - (G * s.3);
 
         let mut t_hat_prime_list = Vec::new();
         for i in 0..self.n {

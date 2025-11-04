@@ -4,7 +4,6 @@ use rand::random_range;
 
 pub struct Shuffler {
     h_list: Vec<Element>,
-    // pk: PublicKey<G>,
     n: usize,
 }
 
@@ -111,10 +110,9 @@ impl Shuffler {
         for i in 0..self.n {
             // IMPORTANTE
             // TODO: definir forma canonica de serializacao para hash com formato consistente
-            u_list.push(scalar_from_bytes(&Sha256::digest(format!("(({:?},{:?},{:?}),{:?})", commit_list, commit_prime_list, c_list, i).replace(" ", "").as_bytes()))); // Shoul it be commit_list[i] and similar?
+            u_list.push(scalar_from_bytes(&Sha256::digest(format!("(({:?},{:?},{:?}),{:?})", commit_list, commit_prime_list, c_list, i).replace(" ", "").as_bytes())));
         }
-
-        let u_prime_list: Vec<Scalar> = (0..self.n).map(|i| u_list[psi[i]].clone()).collect();
+        let u_prime_list: Vec<Scalar> = (0..self.n).map(|i| u_list[psi[i]]).collect();
 
         let (c_hat_list, r_hat_list) = self.gen_commitment_chain(&self.h_list[0], &u_prime_list);
 
@@ -144,16 +142,8 @@ impl Shuffler {
 
         let t0 = G * w_list[0];
         let t1 = G * w_list[1];
-        let t2 = (G * w_list[2]) +  self.h_list
-                .iter()
-                .zip(w_prime_list.iter())
-                .map(|(h, w_prime)| h * w_prime)   // each h_i^{w'_i}
-                .fold(Element::IDENTITY, |acc, x| acc + x); // I feel like it can be done without id sum...
-        let t3 = -(G * w_list[3]) + commit_prime_list
-                .iter()
-                .zip(w_prime_list.iter())
-                .map(|(e_prime, w_prime)| e_prime * w_prime)
-                .fold(Element::IDENTITY, |acc, x| acc + x); // I feel like it can be done without id sum...
+        let t2 = summation((0..self.n).map(|i| self.h_list[i] * w_prime_list[i]).collect()) + (G * w_list[2]);
+        let t3 = summation((0..self.n).map(|i| commit_prime_list[i] * w_prime_list[i]).collect()) - (G * w_list[3]);
 
         let mut t_hat_list = Vec::new();
         for i in 0..self.n {

@@ -12,6 +12,15 @@ pub fn random_scalar() -> Scalar {
     return Scalar::random(&mut OsRng)
 }
 
+pub fn summation (list: Vec<Element>) -> Element {
+    let mut sum: Element = Element::IDENTITY;
+    let n = list.len();
+    for i in 0..n {
+        sum = sum + list[i];
+    }
+    return sum
+}
+
 pub fn scalar_from_bytes (bytes: &[u8]) -> Scalar {
     let mut arr = [0; SIZE/8];
     for (i, val) in bytes.into_iter().take(SIZE/8).rev().enumerate() {
