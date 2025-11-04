@@ -16,7 +16,7 @@ pub fn summation (list: Vec<Element>) -> Element {
     let mut sum: Element = Element::IDENTITY;
     let n = list.len();
     for i in 0..n {
-        sum = sum + list[i];
+        sum += list[i];
     }
     return sum
 }

@@ -33,8 +33,8 @@ impl Shuffler {
         assert_eq!(commit_list.len(), self.n, "commit_list must have size {}", self.n);
 
         let mut recommit_list = Vec::new();
-        let mut recommit_tmp = Vec::new();
-        let mut r_prime_list = Vec::new();
+        let mut recommit_tmp  = Vec::new();
+        let mut r_prime_list  = Vec::new();
         let psi = self.gen_permutation();
 
         for i in 0..self.n {
@@ -114,41 +114,38 @@ impl Shuffler {
         }
         let u_prime_list: Vec<Scalar> = (0..self.n).map(|i| u_list[psi[i]]).collect();
 
-        let (c_hat_list, r_hat_list) = self.gen_commitment_chain(&self.h_list[0], &u_prime_list);
-
-        let mut r_bar = Scalar::ZERO;
-        for i in 0..self.n {
-            r_bar = r_bar + r_list[i];
-        }
-
         let mut v_list = vec![Scalar::ZERO; self.n];
         v_list[self.n - 1] = Scalar::ONE;
         for i in (0..self.n-1).rev() {
             v_list[i] = u_prime_list[i+1] * v_list[i+1];
         }
 
+        let (c_hat_list, r_hat_list) = self.gen_commitment_chain(&self.h_list[0], &u_prime_list);
+
+        let mut r_bar = Scalar::ZERO;
         let mut r_hat = Scalar::ZERO;
         let mut r_tilde = Scalar::ZERO;
         let mut r_prime = Scalar::ZERO;
         for i in 0..self.n {
-            r_hat = r_hat + (r_hat_list[i] * v_list[i]);
-            r_tilde = r_tilde + (r_list[i] * u_list[i]);
-            r_prime = r_prime + (r_prime_list[i] * u_list[i]);
+            r_bar   += r_list[i];
+            r_hat   += r_hat_list[i]   * v_list[i];
+            r_tilde += r_list[i]       * u_list[i];
+            r_prime += r_prime_list[i] * u_list[i];
         }
 
-        let w_list: Vec<Scalar> = (0..4).map(|_| random_scalar()).collect();
-        let w_hat_list: Vec<Scalar> = (0..self.n).map(|_| random_scalar()).collect();
+        let w_list:       Vec<Scalar> = (0..4)     .map(|_| random_scalar()).collect();
+        let w_hat_list:   Vec<Scalar> = (0..self.n).map(|_| random_scalar()).collect();
         let w_prime_list: Vec<Scalar> = (0..self.n).map(|_| random_scalar()).collect();
 
-        let t0 = G * w_list[0];
-        let t1 = G * w_list[1];
-        let t2 = summation((0..self.n).map(|i| self.h_list[i] * w_prime_list[i]).collect()) + (G * w_list[2]);
-        let t3 = summation((0..self.n).map(|i| commit_prime_list[i] * w_prime_list[i]).collect()) - (G * w_list[3]);
+        let t0: Element = G * w_list[0];
+        let t1: Element = G * w_list[1];
+        let t2: Element = summation((0..self.n).map(|i| self.h_list[i]       * w_prime_list[i]).collect()) + (G * w_list[2]);
+        let t3: Element = summation((0..self.n).map(|i| commit_prime_list[i] * w_prime_list[i]).collect()) - (G * w_list[3]);
 
         let mut t_hat_list = Vec::new();
         for i in 0..self.n {
             if i == 0 {
-                t_hat_list.push((G * w_hat_list[i]) + (self.h_list[0] * w_prime_list[i]));
+                t_hat_list.push((G * w_hat_list[i]) + (self.h_list[0]  * w_prime_list[i]));
             } else {
                 t_hat_list.push((G * w_hat_list[i]) + (c_hat_list[i-1] * w_prime_list[i]));
             }
@@ -160,15 +157,15 @@ impl Shuffler {
         // TODO: definir forma canonica de serializacao para hash com formato consistente
         let c = scalar_from_bytes(&Sha256::digest(format!("({:?},{:?})", y, t).replace(" ", "").as_bytes()));
 
-        let s0 = w_list[0] + (c * &r_bar);
-        let s1 = w_list[1] + (c * &r_hat);
-        let s2 = w_list[2] + (c * &r_tilde);
-        let s3 = w_list[3] + (c * &r_prime);
+        let s0: Scalar = w_list[0] + (c * &r_bar);
+        let s1: Scalar = w_list[1] + (c * &r_hat);
+        let s2: Scalar = w_list[2] + (c * &r_tilde);
+        let s3: Scalar = w_list[3] + (c * &r_prime);
 
-        let mut s_hat_list = Vec::new();
-        let mut s_prime_list = Vec::new();
+        let mut s_hat_list: Vec<Scalar> = Vec::new();
+        let mut s_prime_list: Vec<Scalar> = Vec::new();
         for i in 0..self.n {
-            s_hat_list.push(w_hat_list[i] + (c * r_hat_list[i]));
+            s_hat_list  .push(w_hat_list[i]   + (c * r_hat_list[i]));
             s_prime_list.push(w_prime_list[i] + (c * u_prime_list[i]));
         }
         let s = (s0, s1, s2, s3, s_hat_list, s_prime_list);
