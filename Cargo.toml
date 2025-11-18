@@ -11,5 +11,7 @@ num-primes = "0.3.0"
 rand = "0.9.1"
 rand08 = { package = "rand", version = "0.8" }
 sha2 = "0.10.9"
-p256 = { version = "0.13", features = ["arithmetic"] }
+p256 = { version = "0.13", features = ["arithmetic", "ecdsa", "serde"] }
 rand_core = "0.6.4"
+serde_json = "1.0.145"
+serde = { version = "1.0.228", features = ["derive"] }

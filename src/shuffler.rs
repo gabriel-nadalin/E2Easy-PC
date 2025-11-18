@@ -108,9 +108,18 @@ impl Shuffler {
         let mut u_list = Vec::new();
 
         for i in 0..self.n {
+            // conversao para representacao afim eh necessaria para serializacao
+            let to_hash = (
+                (
+                    commit_list.iter().map(|p| p.to_affine()).collect::<Vec<_>>(),
+                    commit_prime_list.iter().map(|p| p.to_affine()).collect::<Vec<_>>(),
+                    c_list.iter().map(|p| p.to_affine()).collect::<Vec<_>>(),
+                ),
+                i
+            );
             // IMPORTANTE
             // TODO: definir forma canonica de serializacao para hash com formato consistente
-            u_list.push(scalar_from_bytes(&Sha256::digest(format!("(({:?},{:?},{:?}),{:?})", commit_list, commit_prime_list, c_list, i).replace(" ", "").as_bytes())));
+            u_list.push(scalar_from_bytes(&hash(to_hash)));
         }
         let u_prime_list: Vec<Scalar> = (0..self.n).map(|i| u_list[psi[i]]).collect();
 
@@ -151,11 +160,24 @@ impl Shuffler {
             }
         }
 
-        let y = (commit_list, commit_prime_list, c_list.clone(), c_hat_list.clone());
-        let t = (t0, t1, t2, t3, t_hat_list);
+        // conversao para representacao afim eh necessaria para serializacao
+        let y = (
+            commit_list.iter().map(|p| p.to_affine()).collect::<Vec<_>>(),
+            commit_prime_list.iter().map(|p| p.to_affine()).collect::<Vec<_>>(),
+            c_list.iter().map(|p| p.to_affine()).collect::<Vec<_>>(),
+            c_hat_list.iter().map(|p| p.to_affine()).collect::<Vec<_>>(),
+        );
+        let t = (
+            t0.to_affine(),
+            t1.to_affine(),
+            t2.to_affine(),
+            t3.to_affine(),
+            t_hat_list.into_iter().map(|p| p.to_affine()).collect()
+        );
         // IMPORTANTE
         // TODO: definir forma canonica de serializacao para hash com formato consistente
-        let c = scalar_from_bytes(&Sha256::digest(format!("({:?},{:?})", y, t).replace(" ", "").as_bytes()));
+        let to_hash = (y, t.clone());
+        let c = scalar_from_bytes(&hash(to_hash));
 
         let s0: Scalar = w_list[0] + (c * &r_bar);
         let s1: Scalar = w_list[1] + (c * &r_hat);

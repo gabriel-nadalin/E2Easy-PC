@@ -1,6 +1,6 @@
 use p256::ProjectivePoint;
 
-// pub mod e2easy;
+pub mod e2easy;
 pub mod types;
 // pub mod keys;
 pub mod utils;
@@ -10,7 +10,7 @@ pub mod shuffler;
 pub mod verifier;
 pub mod io_helpers;
 
-pub const N: usize = 3000;
+pub const N: usize = 10;
 pub const G: ProjectivePoint = ProjectivePoint::GENERATOR;
 pub const SIZE: usize = 256;
 pub type Element = ProjectivePoint;

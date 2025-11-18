@@ -1,40 +1,69 @@
-use std::sync::Arc;
-
 use chrono::Utc;
-
+use p256::ecdsa::{Signature, SigningKey, signature::SignerMut};
+use rand_core::OsRng;
 use sha2::{Digest, Sha256};
-use ed25519_dalek::Signature;
-use crate::{groups::traits::{Group, Scalar}, keys::{self, EncryptionKeys, SignatureKeys}, shuffler::Shuffler, types::*, utils::derive_nonces};
+use crate::{Element, Scalar, pedersen::Pedersen, shuffler::Shuffler, types::*, utils::{derive_nonces, hash, random_element, random_scalar}, verifier::Verifier};
 
-pub struct E2Easy<G: Group> {
-    pub group: Arc<G>,
-    pub enc_keys: EncryptionKeys<G>,
-    sig_keys: SignatureKeys,
-    pub vote_table: VoteTable<G>,
-    votes: Vec<Vote>,
-    nonce_seed: G::Scalar,
-    enc_votes: Vec<Ciphertext<G>>,
+struct TempBallot {
+    scalar_votes: Vec<Scalar>,
+    committed_votes: Vec<StoredElement>,
+    nonce_seed: Scalar,
     timestamp: String,
     tracking_code: TrackingCode,
-    prev_tracking_code: TrackingCode,
-    
-    // shuffler: Shuffler,
 }
 
-impl<G: Group> E2Easy<G> {
-    // seria possivel combinar setup() e start() em new()?
-    pub fn new(group: Arc<G>) -> Self {
-        let (enc_keys, sig_keys) = keys::keygen(group.clone());
+impl TempBallot {
+    pub fn new(
+        scalar_votes: Vec<Scalar>,
+        committed_votes: Vec<StoredElement>,
+        nonce_seed: Scalar,
+        timestamp: String,
+        tracking_code: TrackingCode
+    ) -> Self {
         Self {
-            group: group.clone(),
-            enc_keys,
-            sig_keys,
-            vote_table: VoteTable::new(),
-            votes: Vec::new(),
-            nonce_seed: group.zero(),
-            enc_votes: Vec::new(),
+            scalar_votes,
+            committed_votes,
+            nonce_seed,
+            timestamp,
+            tracking_code,
+        }
+    }
+
+    pub fn empty() -> Self {
+        Self {
+            scalar_votes: Vec::new(),
+            committed_votes: Vec::new(),
+            nonce_seed: Scalar::ZERO,
             timestamp: "".to_string(),
             tracking_code: TrackingCode(Vec::new()),
+        }
+    }
+
+    pub fn commit(&self) -> CommittedBallot {
+        CommittedBallot::new(self.tracking_code.clone(), self.committed_votes.clone(), self.timestamp.clone())
+    }
+}
+
+pub struct E2Easy {
+    pedersen: Pedersen,
+    sig_keys: SigningKey,
+    rdcv: RDCV,
+    m_list: Vec<Scalar>,
+    r_list: Vec<Scalar>,
+    temp_ballot: TempBallot,
+    prev_tracking_code: TrackingCode,
+}
+
+impl E2Easy {
+    // seria possivel combinar setup() e start() em new()?
+    pub fn new(h: &Element) -> Self {
+        Self {
+            pedersen: Pedersen::new(h),
+            sig_keys: SigningKey::random(&mut OsRng),
+            rdcv: RDCV::new(TrackingCode(Sha256::digest(b"start").to_vec())),
+            m_list: Vec::new(),
+            r_list: Vec::new(),
+            temp_ballot: TempBallot::empty(),
             prev_tracking_code: TrackingCode(Sha256::digest(b"start").to_vec()),
         }
     }
@@ -48,77 +77,92 @@ impl<G: Group> E2Easy<G> {
     }
 
     pub fn vote(&mut self, votes: Vec<Vote>) -> (TrackingCode, String) {
-        self.nonce_seed = self.group.random_scalar();
-        let nonces = derive_nonces(&*self.group, &self.nonce_seed.to_bytes(), votes.len());
+        let nonce_seed = random_scalar();
+        let nonces = derive_nonces(&nonce_seed.to_bytes(), votes.len());
 
-        self.timestamp = Utc::now().to_rfc3339();
+        let timestamp = Utc::now().to_rfc3339();
 
-        let mut to_hash = self.prev_tracking_code.0.clone();
-        to_hash.extend_from_slice(self.timestamp.as_bytes());
+        let mut scalar_votes = Vec::new();
+        let mut committed_votes = Vec::new();
 
-        for (vote, nonce) in votes.iter().zip(nonces) {
-            let encoded_vote = self.group.element_from_bytes(&vote.to_bytes());
-            let encrypted_vote = self.enc_keys.encrypt(&encoded_vote, &nonce);
-
-            to_hash.extend_from_slice(&encrypted_vote.to_bytes());
-
-            self.votes.push(vote.clone());
-            self.enc_votes.push(encrypted_vote);
-        }
         
-        self.tracking_code = TrackingCode(Sha256::digest(to_hash).to_vec());
-        (self.tracking_code.clone(), self.timestamp.clone())
+        for (vote, nonce) in votes.iter().zip(nonces) {
+            let encoded_vote = vote.to_scalar();
+            let committed_vote = self.pedersen.commit(&encoded_vote, &nonce);
+            scalar_votes.push(encoded_vote);
+            committed_votes.push(committed_vote.to_affine());
+        }
+        let to_hash = (self.prev_tracking_code.clone(), timestamp.clone(), committed_votes.clone());
+        
+        let tracking_code = TrackingCode(hash(to_hash));
+        
+        self.temp_ballot = TempBallot::new(scalar_votes, committed_votes, nonce_seed, timestamp.clone(), tracking_code.clone());
+        (tracking_code.clone(), timestamp.clone())
     }
 
-    pub fn challenge(&mut self) -> (TrackingCode, Vec<Vote>, G::Scalar) {
-        let output = (self.prev_tracking_code.clone(), self.votes.clone(), self.nonce_seed.clone());
+    pub fn challenge(&mut self) -> (TrackingCode, Vec<StoredElement>, Scalar) {
+        let output = (self.prev_tracking_code.clone(), self.temp_ballot.committed_votes.clone(), self.temp_ballot.nonce_seed.clone());
 
-        self.tracking_code = TrackingCode(Vec::new());
-        self.timestamp = "".to_string();
-        self.nonce_seed = self.group.zero();
-        self.votes = Vec::new();
-        self.enc_votes = Vec::new();
+        self.temp_ballot = TempBallot::empty();
 
         output
     }
 
     pub fn cast(&mut self) -> Signature {
-        let signature = self.sig_keys.sign(self.tracking_code.0.clone());
-        let entry = Ballot {
-            tracking_code: self.tracking_code.clone(),
-            enc_votes: self.enc_votes.clone(),
-            timestamp: self.timestamp.clone()
-        };
-        self.vote_table.add_entry(entry);
+        let signature = self.sig_keys.sign(&self.temp_ballot.tracking_code.0);
+        let entry = self.temp_ballot.commit();
+        self.rdcv.add_entry(entry);
+        self.m_list.extend_from_slice(&self.temp_ballot.scalar_votes);
+        self.r_list.extend_from_slice(&derive_nonces(&self.temp_ballot.nonce_seed.to_bytes(), self.temp_ballot.scalar_votes.len()));
 
-        self.prev_tracking_code = self.tracking_code.clone();
+        self.prev_tracking_code = self.temp_ballot.tracking_code.clone();
 
-        self.tracking_code = TrackingCode(Vec::new());
-        self.timestamp = "".to_string();
-        self.nonce_seed = self.group.zero();
-        self.votes = Vec::new();
-        self.enc_votes = Vec::new();
+        self.temp_ballot = TempBallot::empty();
         
         signature
     }
 
-    pub fn tally(&self) -> (Proofs, VoteTable<G>, VoteOutput) {
-        let e_list = self.vote_table.votes();
-        let h_list: Vec<G::Element> = (0..e_list.len()).map(|_| self.group.random_element()).collect();
+    pub fn tally(&mut self) -> (RDV, RDCV, RDCVPrime, ZKPOutput) {
+        let mut hasher = Sha256::new();
+        hasher.update(&self.prev_tracking_code.0);
+        hasher.update(b"CLOSE");
+        let head = TrackingCode(hasher.finalize().to_vec());
+        self.rdcv.set_head(head);
+        
+        let c_list = self.rdcv.votes();
+        let h_list: Vec<Element> = (0..c_list.len()).map(|_| random_element()).collect();
 
-        let shuffler = Shuffler::new(self.group.clone(), h_list, &self.enc_keys.pk);
+        let shuffler = Shuffler::new(h_list.clone());
 
-        let (e_prime_list, r_prime_list, psi) = shuffler.gen_shuffle(&e_list);
+        let (c_prime_list, r_prime_list, psi) = shuffler.gen_shuffle(&c_list);
 
-        let shuffle_proof = shuffler.gen_proof(
-            &e_list,
-            &e_prime_list,
+        let s_proof = shuffler.gen_proof(
+            &c_list,
+            &c_prime_list,
             &r_prime_list,
             &psi
         );
 
-        println!("{:?}", shuffle_proof);
-        todo!()
+        let verifier = Verifier::new(h_list);
+
+        let s_result = verifier.check_proof(&s_proof, &c_list, &c_prime_list);
+
+        let combined_r_list: Vec<_> = self.r_list.iter().zip(&r_prime_list).map(|(x,y)| x + y).collect();
+
+        let shuffled_r_list: Vec<_> = psi.iter().map(|&i| combined_r_list[i].clone()).collect();
+        let shuffled_m_list: Vec<_> = psi.iter().map(|&i| self.m_list[i].clone()).collect();
+
+        let c_result = self.pedersen.verify_list(&shuffled_m_list, &shuffled_r_list, &c_prime_list);
+
+        let votes = shuffled_m_list.iter().map(|m| Vote::from_scalar(*m)).collect();
+        let rdv = RDV::new(votes);
+        let rdcv = self.rdcv.clone();
+        let rdcv_prime = RDCVPrime::new(c_prime_list);
+        let zkp = ZKPOutput::new(s_proof, shuffled_m_list, shuffled_r_list);
+
+        println!("\n{:?} {:?}", s_result, c_result);
+
+        (rdv, rdcv, rdcv_prime, zkp)
     }
 
     pub fn finish() {

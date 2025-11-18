@@ -1,4 +1,4 @@
-use mixnet_rust::{Element, N, pedersen::Pedersen, shuffler::Shuffler, verifier::Verifier, utils::*};
+use mixnet_rust::{Element, N, Scalar, pedersen::Pedersen, shuffler::Shuffler, utils::*, verifier::Verifier};
 use std::time::Instant;
 
 fn main() {
@@ -11,11 +11,12 @@ fn main() {
         scalar_from_bytes(&val.to_be_bytes().to_vec())
     }).collect();
 
-    let pedersen = Pedersen::new();
+    let pedersen = Pedersen::new(&random_element());
     let shuffler = Shuffler::new(h_list.to_vec());
     let verifier = Verifier::new(h_list);
 
-    let (commit_list_1, r_list) = pedersen.commit_list(&plaintext_list);
+    let r_list: Vec<Scalar> = (0..N).map(|_| random_scalar()).collect();
+    let commit_list_1 = pedersen.commit_list(&plaintext_list, &r_list);
 
     let mixing_start = Instant::now();
     let (commit_list_2, random_list, psi) = shuffler.gen_shuffle(&commit_list_1);

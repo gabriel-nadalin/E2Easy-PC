@@ -1,4 +1,5 @@
 use p256::{elliptic_curve::PrimeField, FieldBytes, elliptic_curve::Field};
+use serde::Serialize;
 use crate::{Scalar, Element, G, SIZE};
 use sha2::{Digest, Sha256};
 use rand_core::OsRng;
@@ -39,4 +40,8 @@ pub fn derive_nonces (seed: &[u8], count: usize) -> Vec<Scalar> {
         nonces.push(scalar_from_bytes(&hash));
     }
     nonces
+}
+
+pub fn hash<T: Serialize>(obj: T) -> Vec<u8> {
+    Sha256::digest(serde_json::to_string(&obj).unwrap().as_bytes()).to_vec()
 }
