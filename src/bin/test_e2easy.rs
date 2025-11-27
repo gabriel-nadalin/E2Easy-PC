@@ -1,13 +1,14 @@
-use mixnet_rust::{e2easy::E2Easy, io_helpers::write_json_to_file, pedersen::Pedersen, types::{TrackingCode, Vote}, utils::{derive_nonces, hash, random_element}};
-use sha2::{Digest, Sha256};
+use mixnet_rust::{e2easy::E2Easy, io_helpers::{read_json, write_json_to_file}, pedersen::Pedersen, types::{InfoContest, TrackingCode, Vote}, utils::{derive_nonces, hash}};
 
 fn main() {
     // let (p, q, g) = U32ModGroup::get_group_params();
     // let group = U32ModGroup::new(p, q, g);
     // let pedersen = Pedersen::new(h)
 
-    let h = random_element();
-    let mut e2easy = E2Easy::new(&h);
+    let info_contest: InfoContest = read_json("./outputs/info_contest.json").unwrap();
+    let (h, h_list) = (info_contest.crypto.h, info_contest.crypto.h_list);
+    
+    let mut e2easy = E2Easy::new(&h, h_list);
     let pedersen = Pedersen::new(&h);
 
 
@@ -49,10 +50,10 @@ fn main() {
         let encoded_vote = vote.to_scalar();
         let committed_vote = pedersen.commit(&encoded_vote, &nonce);
 
-        to_hash.2.push(committed_vote.to_affine());
+        to_hash.2.push(committed_vote);
     }
     
-    assert_eq!(tc, TrackingCode(Sha256::digest(serde_json::to_string(&to_hash).unwrap().as_bytes()).to_vec()));
+    assert_eq!(tc, TrackingCode(hash(&to_hash)));
 
     println!("vote challenged!");
     // println!("{:#?} {:#?}\n\n", chal, e2easy.vote_table);
@@ -118,10 +119,10 @@ fn main() {
         let encoded_vote = vote.to_scalar();
         let committed_vote = pedersen.commit(&encoded_vote, &nonce);
 
-        to_hash.2.push(committed_vote.to_affine());
+        to_hash.2.push(committed_vote);
     }
     
-    assert_eq!(tc, TrackingCode(hash(to_hash)));
+    assert_eq!(tc, TrackingCode(hash(&to_hash)));
 
     println!("vote challenged!");
     // println!("{:#?} {:#?}\n\n", chal, e2easy.vote_table);
@@ -133,4 +134,9 @@ fn main() {
     write_json_to_file(&rdcv, "./outputs/rdcv.json").unwrap();
     write_json_to_file(&rdcv_prime, "./outputs/rdcv_prime.json").unwrap();
     write_json_to_file(&zkp_output, "./outputs/zkp_output.json").unwrap();
+
+    write_json_to_file(&e2easy.sign(&rdv), "./outputs/rdv.sig").unwrap();
+    write_json_to_file(&e2easy.sign(&rdcv), "./outputs/rdcv.sig").unwrap();
+    write_json_to_file(&e2easy.sign(&rdcv_prime), "./outputs/rdcv_prime.sig").unwrap();
+    write_json_to_file(&e2easy.sign(&zkp_output), "./outputs/zkp_output.sig").unwrap();
 }

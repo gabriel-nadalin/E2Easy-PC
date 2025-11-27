@@ -1,5 +1,5 @@
-use crate::{Element, G, Scalar, types::{ShuffleProof, StoredElement}, utils::*};
-use sha2::{Digest, Sha256};
+use crate::{G, Scalar, Element, types::ShuffleProof, utils::*};
+use rayon::prelude::*;
 use p256::elliptic_curve::group::prime::PrimeCurveAffine;
 
 pub struct Verifier {
@@ -16,49 +16,48 @@ impl Verifier {
         }
     }
 
-    pub fn check_proof(&self, pi: &ShuffleProof, commit_list: &Vec<Element>, commit_prime_list: &Vec<Element>) -> bool {
+    pub fn check_proof(&self, pi: &ShuffleProof, commit_list: &[Element], commit_prime_list: &[Element]) -> bool {
+        assert_eq!(commit_list.len(), self.n, "commit_list must have size {}", self.n);
+        assert_eq!(commit_prime_list.len(), self.n, "commit_prime_list must have size {}", self.n);
+
         let (t, s, c_list, c_hat_list) = pi.components();
+        
+        let y = (
+            commit_list,
+            commit_prime_list,
+            &c_list,
+        );
 
-        let mut u_list: Vec<Scalar> = Vec::new();
-        for i in 0..self.n {
-            // conversao para representacao afim eh necessaria para serializacao
-            let to_hash = (
-                (
-                    commit_list.iter().map(|p| p.to_affine()).collect::<Vec<_>>(),
-                    commit_prime_list.iter().map(|p| p.to_affine()).collect::<Vec<_>>(),
-                    c_list.clone(),
-                ),
-                i
-            );
-            // IMPORTANTE
-            // TODO: definir forma canonica de serializacao para hash com formato consistente
-            u_list.push(scalar_from_bytes(&hash(to_hash)));
-        }
+        let u_list: Vec<Scalar> = (0..self.n)
+            .into_par_iter()
+            .map(|i| {
+                let to_hash = (&y, i);
+                scalar_from_bytes(&hash(&to_hash))
+            })
+            .collect();
 
-        let c_bar: Element = summation(c_list.iter().map(|p| p.to_curve()).collect()) - summation(self.h_list.clone());
+        let c_bar = summation(c_list.iter().map(|p| p.to_curve()).collect::<Vec<_>>()) - summation(self.h_list.iter().map(|p| p.to_curve()).collect::<Vec<_>>());
         // Product of u_list
         let u: Scalar = u_list.iter().fold(Scalar::ONE, |acc, x| acc * x);
 
-        let c_hat:   Element = c_hat_list[self.n-1].to_curve() - (self.h_list[0] * u);
-        let c_tilde: Element = summation((0..self.n).map(|i| c_list[i]      * u_list[i]).collect());
-        let e_prime: Element = summation((0..self.n).map(|i| commit_list[i] * u_list[i]).collect());
+        let c_hat = c_hat_list[self.n-1].to_curve() - (self.h_list[0] * u);
+        let c_tilde = summation((0..self.n).map(|i| c_list[i]      * u_list[i]).collect());
+        let e_prime = summation((0..self.n).map(|i| commit_list[i] * u_list[i]).collect());
 
-        // conversao para representacao afim eh necessaria para serializacao
+        // conversao para representacao afim eh necessaria para serializacao canonica
         let y = (
-            commit_list.iter().map(|p| p.to_affine()).collect::<Vec<_>>(),
-            commit_prime_list.iter().map(|p| p.to_affine()).collect::<Vec<_>>(),
-            c_list.clone(),
-            c_hat_list.clone(),
+            commit_list,
+            commit_prime_list,
+            &c_list,
+            &c_hat_list,
         );
-        // IMPORTANTE
-        // TODO: definir forma canonica de serializacao para hash com formato consistente
-        let to_hash = (y, t.clone());
-        let c = scalar_from_bytes(&hash(to_hash));
+        let to_hash = (y, &t);
+        let c = scalar_from_bytes(&hash(&to_hash));
 
-        let t_prime_0: StoredElement = ((G * s.0) - (c_bar * c)).to_affine();
-        let t_prime_1: StoredElement = ((G * s.1) - (c_hat * c)).to_affine();
-        let t_prime_2: StoredElement = (summation((0..self.n).map(|i| self.h_list[i]       * s.5[i]).collect()) - (c_tilde * c) + (G * s.2)).to_affine();
-        let t_prime_3: StoredElement = (summation((0..self.n).map(|i| commit_prime_list[i] * s.5[i]).collect()) - (e_prime * c) - (G * s.3)).to_affine();
+        let t_prime_0: Element = ((G * s.0) - (c_bar * c)).to_affine();
+        let t_prime_1: Element = ((G * s.1) - (c_hat * c)).to_affine();
+        let t_prime_2: Element = (summation((0..self.n).map(|i| self.h_list[i]       * s.5[i]).collect()) - (c_tilde * c) + (G * s.2)).to_affine();
+        let t_prime_3: Element = (summation((0..self.n).map(|i| commit_prime_list[i] * s.5[i]).collect()) - (e_prime * c) - (G * s.3)).to_affine();
 
         let mut t_hat_prime_list = Vec::new();
         for i in 0..self.n {

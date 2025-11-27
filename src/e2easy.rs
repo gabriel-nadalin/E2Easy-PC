@@ -1,12 +1,12 @@
 use chrono::Utc;
 use p256::ecdsa::{Signature, SigningKey, signature::SignerMut};
 use rand_core::OsRng;
-use sha2::{Digest, Sha256};
-use crate::{Element, Scalar, pedersen::Pedersen, shuffler::Shuffler, types::*, utils::{derive_nonces, hash, random_element, random_scalar}, verifier::Verifier};
+use serde::Serialize;
+use crate::{Element, Scalar, pedersen::Pedersen, shuffler::Shuffler, types::*, utils::{derive_nonces, hash, random_scalar}};
 
 struct TempBallot {
     scalar_votes: Vec<Scalar>,
-    committed_votes: Vec<StoredElement>,
+    committed_votes: Vec<Element>,
     nonce_seed: Scalar,
     timestamp: String,
     tracking_code: TrackingCode,
@@ -15,7 +15,7 @@ struct TempBallot {
 impl TempBallot {
     pub fn new(
         scalar_votes: Vec<Scalar>,
-        committed_votes: Vec<StoredElement>,
+        committed_votes: Vec<Element>,
         nonce_seed: Scalar,
         timestamp: String,
         tracking_code: TrackingCode
@@ -45,8 +45,9 @@ impl TempBallot {
 }
 
 pub struct E2Easy {
+    h_list: Vec<Element>,
     pedersen: Pedersen,
-    sig_keys: SigningKey,
+    sig_key: SigningKey,
     rdcv: RDCV,
     m_list: Vec<Scalar>,
     r_list: Vec<Scalar>,
@@ -56,15 +57,17 @@ pub struct E2Easy {
 
 impl E2Easy {
     // seria possivel combinar setup() e start() em new()?
-    pub fn new(h: &Element) -> Self {
+    pub fn new(h: &Element, h_list: Vec<Element>) -> Self {
         Self {
+            h_list,
             pedersen: Pedersen::new(h),
-            sig_keys: SigningKey::random(&mut OsRng),
-            rdcv: RDCV::new(TrackingCode(Sha256::digest(b"start").to_vec())),
+            sig_key: SigningKey::random(&mut OsRng),
+            rdcv: RDCV::new(TrackingCode(hash(b"start"))),
             m_list: Vec::new(),
             r_list: Vec::new(),
             temp_ballot: TempBallot::empty(),
-            prev_tracking_code: TrackingCode(Sha256::digest(b"start").to_vec()),
+            // TODO: criat string de configuracao Q para a cauda do RDCV
+            prev_tracking_code: TrackingCode(hash(b"start")),
         }
     }
 
@@ -90,17 +93,17 @@ impl E2Easy {
             let encoded_vote = vote.to_scalar();
             let committed_vote = self.pedersen.commit(&encoded_vote, &nonce);
             scalar_votes.push(encoded_vote);
-            committed_votes.push(committed_vote.to_affine());
+            committed_votes.push(committed_vote);
         }
-        let to_hash = (self.prev_tracking_code.clone(), timestamp.clone(), committed_votes.clone());
+        let to_hash = (&self.prev_tracking_code, &timestamp, &committed_votes);
         
-        let tracking_code = TrackingCode(hash(to_hash));
+        let tracking_code = TrackingCode(hash(&to_hash));
         
         self.temp_ballot = TempBallot::new(scalar_votes, committed_votes, nonce_seed, timestamp.clone(), tracking_code.clone());
         (tracking_code.clone(), timestamp.clone())
     }
 
-    pub fn challenge(&mut self) -> (TrackingCode, Vec<StoredElement>, Scalar) {
+    pub fn challenge(&mut self) -> (TrackingCode, Vec<Element>, Scalar) {
         let output = (self.prev_tracking_code.clone(), self.temp_ballot.committed_votes.clone(), self.temp_ballot.nonce_seed.clone());
 
         self.temp_ballot = TempBallot::empty();
@@ -109,7 +112,7 @@ impl E2Easy {
     }
 
     pub fn cast(&mut self) -> Signature {
-        let signature = self.sig_keys.sign(&self.temp_ballot.tracking_code.0);
+        let signature = self.sig_key.sign(&self.temp_ballot.tracking_code.0);
         let entry = self.temp_ballot.commit();
         self.rdcv.add_entry(entry);
         self.m_list.extend_from_slice(&self.temp_ballot.scalar_votes);
@@ -123,14 +126,12 @@ impl E2Easy {
     }
 
     pub fn tally(&mut self) -> (RDV, RDCV, RDCVPrime, ZKPOutput) {
-        let mut hasher = Sha256::new();
-        hasher.update(&self.prev_tracking_code.0);
-        hasher.update(b"CLOSE");
-        let head = TrackingCode(hasher.finalize().to_vec());
+        let to_hash = (&self.prev_tracking_code, b"CLOSE");
+        let head = TrackingCode(hash(&to_hash));
         self.rdcv.set_head(head);
         
         let c_list = self.rdcv.votes();
-        let h_list: Vec<Element> = (0..c_list.len()).map(|_| random_element()).collect();
+        let h_list: Vec<Element> = self.h_list.iter().take(c_list.len()).cloned().collect();
 
         let shuffler = Shuffler::new(h_list.clone());
 
@@ -143,29 +144,26 @@ impl E2Easy {
             &psi
         );
 
-        let verifier = Verifier::new(h_list);
-
-        let s_result = verifier.check_proof(&s_proof, &c_list, &c_prime_list);
-
         let combined_r_list: Vec<_> = self.r_list.iter().zip(&r_prime_list).map(|(x,y)| x + y).collect();
 
         let shuffled_r_list: Vec<_> = psi.iter().map(|&i| combined_r_list[i].clone()).collect();
         let shuffled_m_list: Vec<_> = psi.iter().map(|&i| self.m_list[i].clone()).collect();
 
-        let c_result = self.pedersen.verify_list(&shuffled_m_list, &shuffled_r_list, &c_prime_list);
-
         let votes = shuffled_m_list.iter().map(|m| Vote::from_scalar(*m)).collect();
         let rdv = RDV::new(votes);
         let rdcv = self.rdcv.clone();
         let rdcv_prime = RDCVPrime::new(c_prime_list);
-        let zkp = ZKPOutput::new(s_proof, shuffled_m_list, shuffled_r_list);
-
-        println!("\n{:?} {:?}", s_result, c_result);
+        let zkp = ZKPOutput::new(*self.sig_key.verifying_key(), s_proof, shuffled_m_list, shuffled_r_list);
 
         (rdv, rdcv, rdcv_prime, zkp)
     }
 
     pub fn finish() {
         todo!()
+    }
+
+    pub fn sign<T: Serialize>(&mut self, value: &T) -> Signature {
+        let json_bytes = serde_json::to_vec_pretty(value).unwrap();
+        self.sig_key.sign(&json_bytes)
     }
 }

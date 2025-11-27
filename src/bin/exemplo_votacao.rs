@@ -1,13 +1,14 @@
-use p256::elliptic_curve::group::prime::PrimeCurveAffine;
-use mixnet_rust::{e2easy::E2Easy, io_helpers::{request_user_input, write_json_to_file}, types::{StoredElement, Vote}};
+use mixnet_rust::{e2easy::E2Easy, io_helpers::{read_json, request_user_input, write_json_to_file}, types::{InfoContest, Vote}};
 
 const CHALLENGE: &str = "2";
 // const CAST: &str = "1";
 fn main () {
     println!("\n\n--------- Iniciando urna eletronica... ------------");
 
-    let h = serde_json::from_str::<StoredElement>("\"0335EB803C924AA6E9A434BCFF41A00FA8C7877A368C76E48D275E8BD5C217516C\"").unwrap().to_curve();
-    let mut e2easy = E2Easy::new(&h);
+    let info_contest: InfoContest = read_json("./outputs/info_contest.json").unwrap();
+    let (h, h_list) = (info_contest.crypto.h, info_contest.crypto.h_list);
+    
+    let mut e2easy = E2Easy::new(&h, h_list);
 
     loop {
         let is_new_voter = request_user_input("\nReceber novo voto? (s/n): ");
@@ -26,20 +27,20 @@ fn main () {
         let votes = vec![Vote{ contest: 0, choice: vote1 }, Vote{ contest: 1, choice: vote2 }];
 
         let (tracking_code, timestamp) = e2easy.vote(votes);
-        println!("\nObrigado. Aqui está o seu código de rastreio: {}", hex::encode(tracking_code.0));
+        println!("\nObrigado. Aqui está o seu código de rastreio: {}", serde_json::to_string(&tracking_code).unwrap());
 
         let challenge_or_cast = request_user_input("Deseja (1) lançar o voto ou (2) desafiar a urna? ");
         if challenge_or_cast == CHALLENGE {
             let (previous_hash, _votes, nonce) = e2easy.challenge();
 
             println!("Aqui estão os dados para o desafio:");
-            println!("    hash anterior: {}", hex::encode(previous_hash.0));
-            println!("    nonce: {:?}", hex::encode(nonce.to_bytes()));
+            println!("    hash anterior: {}", serde_json::to_string(&previous_hash).unwrap());
+            println!("    nonce: {}", serde_json::to_string(&nonce).unwrap());
             println!("    carimbo de tempo: {}", timestamp);
             println!("Voto descartado. Vote novamente.")
         } else {
             let tc_signature = e2easy.cast();
-            println!("Aqui está a assinatura do seu código de rastreio:\n{}", hex::encode(tc_signature.to_bytes()));
+            println!("Aqui está a assinatura do seu código de rastreio:\n{}", serde_json::to_string(&tc_signature).unwrap());
             println!("Voto lançado! Obrigado por votar.");
         }
     }
@@ -53,6 +54,11 @@ fn main () {
     write_json_to_file(&rdcv, "./outputs/rdcv.json").unwrap();
     write_json_to_file(&rdcv_prime, "./outputs/rdcv_prime.json").unwrap();
     write_json_to_file(&zkp_output, "./outputs/zkp_output.json").unwrap();
+
+    write_json_to_file(&e2easy.sign(&rdv), "./outputs/rdv.sig").unwrap();
+    write_json_to_file(&e2easy.sign(&rdcv), "./outputs/rdcv.sig").unwrap();
+    write_json_to_file(&e2easy.sign(&rdcv_prime), "./outputs/rdcv_prime.sig").unwrap();
+    write_json_to_file(&e2easy.sign(&zkp_output), "./outputs/zkp_output.sig").unwrap();
     
     println!("Arquivos criados em /outputs/");
     println!("--------- Urna eletrônica encerrada ------------\n\n");

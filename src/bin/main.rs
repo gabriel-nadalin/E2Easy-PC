@@ -1,18 +1,19 @@
-use mixnet_rust::{Element, N, Scalar, pedersen::Pedersen, shuffler::Shuffler, utils::*, verifier::Verifier};
+use mixnet_rust::{N, Scalar, io_helpers::read_json, pedersen::Pedersen, shuffler::Shuffler, types::InfoContest, utils::*, verifier::Verifier};
 use std::time::Instant;
 
 fn main() {
     println!("N = {:?}", N);
 
-    let h_list: Vec<Element> = (0..N).map(|_| random_element()).collect();
+    let info_contest: InfoContest = read_json("./outputs/info_contest.json").unwrap();
+    let (h, h_list) = (info_contest.crypto.h, info_contest.crypto.h_list.iter().take(N).cloned().collect::<Vec<_>>());
     let plaintext_list: Vec<_> = (0..N).map(|i| { 
         // Need to improve, but ok for numbers less than 1000 bits (because I removed (mod p))
         let val = (i as u32 + 1) * (i as u32 + 1);
         scalar_from_bytes(&val.to_be_bytes().to_vec())
     }).collect();
 
-    let pedersen = Pedersen::new(&random_element());
-    let shuffler = Shuffler::new(h_list.to_vec());
+    let pedersen = Pedersen::new(&h);
+    let shuffler = Shuffler::new(h_list.clone());
     let verifier = Verifier::new(h_list);
 
     let r_list: Vec<Scalar> = (0..N).map(|_| random_scalar()).collect();

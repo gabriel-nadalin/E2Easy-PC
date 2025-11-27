@@ -1,6 +1,6 @@
-use crate::{Scalar, Element, G, utils::*, types::ShuffleProof};
-use sha2::{Digest, Sha256};
+use crate::{G, Scalar, Element, types::ShuffleProof, utils::*};
 use rand::random_range;
+use rayon::prelude::*;
 
 pub struct Shuffler {
     h_list: Vec<Element>,
@@ -29,7 +29,7 @@ impl Shuffler {
         return psi
     }
 
-    pub fn gen_shuffle(&self, commit_list: &Vec<Element>) -> (Vec<Element>, Vec<Scalar>, Vec<usize>) {
+    pub fn gen_shuffle(&self, commit_list: &[Element]) -> (Vec<Element>, Vec<Scalar>, Vec<usize>) {
         assert_eq!(commit_list.len(), self.n, "commit_list must have size {}", self.n);
 
         let mut recommit_list = Vec::new();
@@ -40,14 +40,14 @@ impl Shuffler {
         for i in 0..self.n {
             let r_prime = random_scalar();
             let c0 = G * r_prime; // I guess no need to multiply for h^0, since it is 1, right?
-            let recommit = commit_list[i] + c0;
+            let recommit = c0 + commit_list[i];
 
             recommit_tmp.push(recommit);
             r_prime_list.push(r_prime);
         }
 
         for i in 0..self.n {
-            recommit_list.push(recommit_tmp[psi[i]].clone());
+            recommit_list.push(recommit_tmp[psi[i]].into());
         }
 
         return (recommit_list, r_prime_list, psi)
@@ -64,7 +64,7 @@ impl Shuffler {
             let c = (G * r) + self.h_list[i];
 
             r_list[psi[i]] = r;
-            c_list[psi[i]] = c;
+            c_list[psi[i]] = c.into();
         }
         
         return (c_list, r_list)
@@ -78,7 +78,7 @@ impl Shuffler {
 
         for i in 0..self.n {
             let r = random_scalar();
-            let c: Element;
+            let c;
             if i == 0 {
                 c = (G * r) + (*c0 * u_list[i]);
             } else {
@@ -86,7 +86,7 @@ impl Shuffler {
             }
 
             r_list.push(r);
-            c_list.push(c);
+            c_list.push(c.into());
         }
 
         return (c_list, r_list)
@@ -94,9 +94,9 @@ impl Shuffler {
 
     pub fn gen_proof(
         &self,
-        commit_list: &Vec<Element>,
-        commit_prime_list: &Vec<Element>,
-        r_prime_list: &Vec<Scalar>,
+        commit_list: &[Element],
+        commit_prime_list: &[Element],
+        r_prime_list: &[Scalar],
         psi: &[usize]
     ) -> ShuffleProof {
         assert_eq!(commit_list.len(), self.n, "commit_list must have size {}", self.n);
@@ -105,22 +105,21 @@ impl Shuffler {
         assert_eq!(psi.len(), self.n, "psi must have size {}", self.n);
         
         let (c_list, r_list) = self.gen_commitment(psi);
-        let mut u_list = Vec::new();
 
-        for i in 0..self.n {
-            // conversao para representacao afim eh necessaria para serializacao
-            let to_hash = (
-                (
-                    commit_list.iter().map(|p| p.to_affine()).collect::<Vec<_>>(),
-                    commit_prime_list.iter().map(|p| p.to_affine()).collect::<Vec<_>>(),
-                    c_list.iter().map(|p| p.to_affine()).collect::<Vec<_>>(),
-                ),
-                i
-            );
-            // IMPORTANTE
-            // TODO: definir forma canonica de serializacao para hash com formato consistente
-            u_list.push(scalar_from_bytes(&hash(to_hash)));
-        }
+        let y = (
+            commit_list,
+            commit_prime_list,
+            &c_list,
+        );
+
+        let u_list: Vec<Scalar> = (0..self.n)
+            .into_par_iter()
+            .map(|i| {
+                let to_hash = (y, i);
+                scalar_from_bytes(&hash(&to_hash))
+            })
+            .collect();
+
         let u_prime_list: Vec<Scalar> = (0..self.n).map(|i| u_list[psi[i]]).collect();
 
         let mut v_list = vec![Scalar::ZERO; self.n];
@@ -146,10 +145,10 @@ impl Shuffler {
         let w_hat_list:   Vec<Scalar> = (0..self.n).map(|_| random_scalar()).collect();
         let w_prime_list: Vec<Scalar> = (0..self.n).map(|_| random_scalar()).collect();
 
-        let t0: Element = G * w_list[0];
-        let t1: Element = G * w_list[1];
-        let t2: Element = summation((0..self.n).map(|i| self.h_list[i]       * w_prime_list[i]).collect()) + (G * w_list[2]);
-        let t3: Element = summation((0..self.n).map(|i| commit_prime_list[i] * w_prime_list[i]).collect()) - (G * w_list[3]);
+        let t0 = G * w_list[0];
+        let t1 = G * w_list[1];
+        let t2 = summation((0..self.n).map(|i| self.h_list[i]       * w_prime_list[i]).collect()) + (G * w_list[2]);
+        let t3 = summation((0..self.n).map(|i| commit_prime_list[i] * w_prime_list[i]).collect()) - (G * w_list[3]);
 
         let mut t_hat_list = Vec::new();
         for i in 0..self.n {
@@ -160,24 +159,22 @@ impl Shuffler {
             }
         }
 
-        // conversao para representacao afim eh necessaria para serializacao
+        // conversao para representacao afim eh necessaria para serializacao canonica
         let y = (
-            commit_list.iter().map(|p| p.to_affine()).collect::<Vec<_>>(),
-            commit_prime_list.iter().map(|p| p.to_affine()).collect::<Vec<_>>(),
-            c_list.iter().map(|p| p.to_affine()).collect::<Vec<_>>(),
-            c_hat_list.iter().map(|p| p.to_affine()).collect::<Vec<_>>(),
+            commit_list,
+            commit_prime_list,
+            &c_list,
+            &c_hat_list,
         );
         let t = (
-            t0.to_affine(),
-            t1.to_affine(),
-            t2.to_affine(),
-            t3.to_affine(),
-            t_hat_list.into_iter().map(|p| p.to_affine()).collect()
+            t0.into(),
+            t1.into(),
+            t2.into(),
+            t3.into(),
+            t_hat_list.into_iter().map(|p| p.into()).collect::<Vec<_>>()
         );
-        // IMPORTANTE
-        // TODO: definir forma canonica de serializacao para hash com formato consistente
-        let to_hash = (y, t.clone());
-        let c = scalar_from_bytes(&hash(to_hash));
+        let to_hash = (y, &t);
+        let c = scalar_from_bytes(&hash(&to_hash));
 
         let s0: Scalar = w_list[0] + (c * &r_bar);
         let s1: Scalar = w_list[1] + (c * &r_hat);

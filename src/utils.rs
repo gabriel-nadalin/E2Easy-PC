@@ -1,4 +1,4 @@
-use p256::{elliptic_curve::PrimeField, FieldBytes, elliptic_curve::Field};
+use p256::{FieldBytes, ProjectivePoint, elliptic_curve::{Field, PrimeField}};
 use serde::Serialize;
 use crate::{Scalar, Element, G, SIZE};
 use sha2::{Digest, Sha256};
@@ -6,15 +6,15 @@ use rand_core::OsRng;
 
 pub fn random_element() -> Element {
     let randomizer: Scalar = Scalar::random(&mut OsRng);
-    return G * randomizer
+    return (G * randomizer).into()
 }
 
 pub fn random_scalar() -> Scalar {
     return Scalar::random(&mut OsRng)
 }
 
-pub fn summation (list: Vec<Element>) -> Element {
-    let mut sum: Element = Element::IDENTITY;
+pub fn summation (list: Vec<ProjectivePoint>) -> ProjectivePoint {
+    let mut sum: ProjectivePoint = ProjectivePoint::IDENTITY;
     let n = list.len();
     for i in 0..n {
         sum += list[i];
@@ -42,6 +42,6 @@ pub fn derive_nonces (seed: &[u8], count: usize) -> Vec<Scalar> {
     nonces
 }
 
-pub fn hash<T: Serialize>(obj: T) -> Vec<u8> {
-    Sha256::digest(serde_json::to_string(&obj).unwrap().as_bytes()).to_vec()
+pub fn hash<T: Serialize + ?Sized>(obj: &T) -> Vec<u8> {
+    Sha256::digest(serde_json::to_vec(&obj).unwrap()).to_vec()
 }

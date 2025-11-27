@@ -1,4 +1,4 @@
-use crate::{Scalar, Element, G, utils::*};
+use crate::{G, Scalar, Element};
 
 pub struct Pedersen {
     h: Element,
@@ -12,7 +12,7 @@ impl Pedersen {
     }
 
     pub fn commit (&self, plaintext: &Scalar, r: &Scalar) -> Element {
-        (G * r) + (self.h * plaintext)
+        ((G * r) + (self.h * plaintext)).into()
     }
 
     pub fn commit_list (&self, plaintext_list: &[Scalar], random_list: &[Scalar]) -> Vec<Element> {
@@ -29,10 +29,10 @@ impl Pedersen {
 
     pub fn verify (&self, plaintext: &Scalar, r: &Scalar, commit: &Element) -> bool {
         let commit_prime = (G * r) + (self.h * plaintext);
-        *commit == commit_prime
+        *commit == commit_prime.into()
     }
 
-    pub fn verify_list (&self, plaintext_list: &Vec<Scalar>, r_list: &Vec<Scalar>, commit_list: &Vec<Element>) -> bool {
+    pub fn verify_list (&self, plaintext_list: &[Scalar], r_list: &[Scalar], commit_list: &[Element]) -> bool {
         let n = r_list.len();
         let mut result: bool = true;
 
