@@ -110,11 +110,11 @@ impl Vote {
 }
 
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
-pub struct RDV {
+pub struct RDVPrime {
     entries: Vec<Vote>,
 }
 
-impl RDV {
+impl RDVPrime {
     pub fn new(entries: Vec<Vote>) -> Self {
         Self { entries }
     }

@@ -125,7 +125,7 @@ impl E2Easy {
         signature
     }
 
-    pub fn tally(&mut self) -> (RDV, RDCV, RDCVPrime, ZKPOutput) {
+    pub fn tally(&mut self) -> (RDVPrime, RDCV, RDCVPrime, ZKPOutput) {
         let to_hash = (&self.prev_tracking_code, b"CLOSE");
         let head = TrackingCode(hash(&to_hash));
         self.rdcv.set_head(head);
@@ -150,12 +150,12 @@ impl E2Easy {
         let shuffled_m_list: Vec<_> = psi.iter().map(|&i| self.m_list[i].clone()).collect();
 
         let votes = shuffled_m_list.iter().map(|m| Vote::from_scalar(*m)).collect();
-        let rdv = RDV::new(votes);
+        let rdv_prime = RDVPrime::new(votes);
         let rdcv = self.rdcv.clone();
         let rdcv_prime = RDCVPrime::new(c_prime_list);
         let zkp = ZKPOutput::new(*self.sig_key.verifying_key(), s_proof, shuffled_m_list, shuffled_r_list);
 
-        (rdv, rdcv, rdcv_prime, zkp)
+        (rdv_prime, rdcv, rdcv_prime, zkp)
     }
 
     pub fn finish() {

@@ -44,7 +44,7 @@ fn main() {
     let mixing_start = Instant::now();
     let cycles_start = unsafe { rdtsc() };
 
-    let (rdv, rdcv, rdcv_prime, zkp_output) = e2easy.tally();
+    let (rdv_prime, rdcv, rdcv_prime, zkp_output) = e2easy.tally();
 
     let mixing_cycles = unsafe { rdtsc() } - cycles_start;
     let mixing_time = mixing_start.elapsed();
@@ -80,12 +80,12 @@ fn main() {
     println!("Commits verifying time: {:?}", commits_time);
     println!("Commits verifying cycles: {:?}", commit_cycles);
 
-    write_json_to_file(&rdv, "./outputs/rdv.json").unwrap();
+    write_json_to_file(&rdv_prime, "./outputs/rdv_prime.json").unwrap();
     write_json_to_file(&rdcv, "./outputs/rdcv.json").unwrap();
     write_json_to_file(&rdcv_prime, "./outputs/rdcv_prime.json").unwrap();
     write_json_to_file(&zkp_output, "./outputs/zkp_output.json").unwrap();
 
-    write_json_to_file(&e2easy.sign(&rdv), "./outputs/rdv.sig").unwrap();
+    write_json_to_file(&e2easy.sign(&rdv_prime), "./outputs/rdv_prime.sig").unwrap();
     write_json_to_file(&e2easy.sign(&rdcv), "./outputs/rdcv.sig").unwrap();
     write_json_to_file(&e2easy.sign(&rdcv_prime), "./outputs/rdcv_prime.sig").unwrap();
     write_json_to_file(&e2easy.sign(&zkp_output), "./outputs/zkp_output.sig").unwrap();

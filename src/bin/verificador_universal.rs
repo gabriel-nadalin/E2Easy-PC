@@ -1,7 +1,7 @@
 use mixnet_rust::Element;
 use mixnet_rust::io_helpers::read_json;
 use mixnet_rust::pedersen::Pedersen;
-use mixnet_rust::types::{InfoContest, RDCV, RDCVPrime, RDV, TrackingCode, Vote, ZKPOutput};
+use mixnet_rust::types::{InfoContest, RDCV, RDCVPrime, RDVPrime, TrackingCode, Vote, ZKPOutput};
 use mixnet_rust::utils::hash;
 use p256::ecdsa::Signature;
 use p256::ecdsa::signature::Verifier;
@@ -11,12 +11,12 @@ fn main() {
 
     let info_contest: InfoContest = read_json("./outputs/info_contest.json").unwrap();
 
-    let rdv: RDV = read_json("./outputs/rdv.json").unwrap();
+    let rdv_prime: RDVPrime = read_json("./outputs/rdv_prime.json").unwrap();
     let rdcv: RDCV = read_json("./outputs/rdcv.json").unwrap();
     let rdcv_prime: RDCVPrime = read_json("./outputs/rdcv_prime.json").unwrap();
     let zkp_output: ZKPOutput = read_json("./outputs/zkp_output.json").unwrap();
 
-    let rdv_sig: Signature = read_json("./outputs/rdv.sig").unwrap();
+    let rdv_prime_sig: Signature = read_json("./outputs/rdv_prime.sig").unwrap();
     let rdcv_sig: Signature = read_json("./outputs/rdcv.sig").unwrap();
     let rdcv_prime_sig: Signature = read_json("./outputs/rdcv_prime.sig").unwrap();
     let zkp_output_sig: Signature = read_json("./outputs/zkp_output.sig").unwrap();
@@ -35,7 +35,7 @@ fn main() {
     println!("Verificando assinaturas");
 
     let vk = zkp_output.verifying_key;
-    vk.verify(&std::fs::read("./outputs/rdv.json").unwrap(), &rdv_sig).unwrap();
+    vk.verify(&std::fs::read("./outputs/rdv_prime.json").unwrap(), &rdv_prime_sig).unwrap();
     vk.verify(&std::fs::read("./outputs/rdcv.json").unwrap(), &rdcv_sig).unwrap();
     vk.verify(&std::fs::read("./outputs/rdcv_prime.json").unwrap(), &rdcv_prime_sig).unwrap();
     vk.verify(&std::fs::read("./outputs/zkp_output.json").unwrap(), &zkp_output_sig).unwrap();
@@ -66,9 +66,9 @@ fn main() {
     assert!(pedersen.verify_list(&m_list, &r_list, commit_prime_list));
 
     let votes = m_list.iter().map(|m| Vote::from_scalar(*m)).collect();
-    let rdv_prime = RDV::new(votes);
+    let rdv_prime_m = RDVPrime::new(votes);
 
-    assert_eq!(rdv, rdv_prime);
+    assert_eq!(rdv_prime, rdv_prime_m);
 
     println!("Eleição verificada com sucesso!");
 }
