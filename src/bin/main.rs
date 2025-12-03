@@ -23,6 +23,8 @@ fn main() {
     
     println!("N = {:?}", n);
     
+    let mut vote_cycles: u64 = 0;
+    let mut cast_cycles: u64 = 0;
     // Simulate voting: all voters cast their votes (no challenges)
     for i in 0..n {
         let mut votes = Vec::new();
@@ -35,10 +37,16 @@ fn main() {
                 choice 
             });
         }
-        
+        let cycles_start = unsafe { rdtsc() };
         let (_tracking_code, _timestamp) = e2easy.vote(votes);
+        vote_cycles += unsafe { rdtsc() } - cycles_start;
+
+        let cycles_start = unsafe { rdtsc() };
         let _tc_signature = e2easy.cast();
+        cast_cycles += unsafe { rdtsc() } - cycles_start;
     }
+    println!("Voting cycles: {:?}", vote_cycles);
+    println!("Casting cycles: {:?}", cast_cycles);
 
     // Tally votes with timing
     let mixing_start = Instant::now();
