@@ -1,6 +1,7 @@
 use chrono::Utc;
 use p256::ecdsa::{Signature, SigningKey, signature::SignerMut};
 use rand_core::OsRng;
+use safer_ffi::derive_ReprC;
 use serde::Serialize;
 use crate::{Element, Scalar, pedersen::Pedersen, shuffler::Shuffler, types::*, utils::{derive_nonces, hash, random_scalar}};
 
@@ -44,6 +45,8 @@ impl TempBallot {
     }
 }
 
+#[derive_ReprC]
+#[repr(opaque)]
 pub struct E2Easy {
     h_list: Vec<Element>,
     pedersen: Pedersen,
@@ -69,10 +72,6 @@ impl E2Easy {
             // TODO: criat string de configuracao Q para a cauda do RDCV
             prev_tracking_code: TrackingCode(hash(b"start")),
         }
-    }
-
-    pub fn setup() {
-        todo!()
     }
 
     pub fn start() {

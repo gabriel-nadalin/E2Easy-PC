@@ -7,8 +7,16 @@ pub mod pedersen;
 pub mod shuffler;
 pub mod verifier;
 pub mod io_helpers;
+pub mod ffi;
 
 pub const G: ProjectivePoint = ProjectivePoint::GENERATOR;
 pub const SIZE: usize = 256;
 pub type Element = AffinePoint;
 pub type Scalar = p256::Scalar;
+
+#[cfg(feature = "headers")]
+pub fn generate_headers() -> std::io::Result<()> {
+    safer_ffi::headers::builder()
+        .to_file("e2easy.h")?
+        .generate()
+}
