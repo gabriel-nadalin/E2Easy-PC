@@ -1,7 +1,7 @@
 use safer_ffi::prelude::*;
 use crate::e2easy::E2Easy;
 use crate::io_helpers::read_json;
-use crate::types::*;
+use crate::types::{ballot::*, config::*};
 
 // Simple result wrapper
 #[derive_ReprC]

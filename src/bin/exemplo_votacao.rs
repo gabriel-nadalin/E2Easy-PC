@@ -1,4 +1,4 @@
-use mixnet_rust::{e2easy::E2Easy, io_helpers::{read_json, request_user_input, write_json_to_file}, types::{InfoContest, Vote}};
+use mixnet_rust::{e2easy::E2Easy, io_helpers::{read_json, request_user_input, write_json_to_file}, types::{config::*, ballot::*}};
 
 const CHALLENGE: &str = "2";
 // const CAST: &str = "1";

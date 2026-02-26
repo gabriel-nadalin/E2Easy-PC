@@ -1,4 +1,4 @@
-use mixnet_rust::{e2easy::E2Easy, io_helpers::{read_json, write_json_to_file}, pedersen::Pedersen, types::{InfoContest, TrackingCode, Vote}, utils::{derive_nonces, hash}};
+use mixnet_rust::{e2easy::E2Easy, io_helpers::{read_json, write_json_to_file}, pedersen::Pedersen, types::{config::*, ballot::*}, utils::{derive_nonces, hash}};
 
 fn main() {
     // let (p, q, g) = U32ModGroup::get_group_params();

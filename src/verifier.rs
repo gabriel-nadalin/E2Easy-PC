@@ -1,4 +1,4 @@
-use crate::{G, Scalar, Element, types::ShuffleProof, utils::*};
+use crate::{G, Scalar, Element, types::proof::ShuffleProof, utils::*};
 use rayon::prelude::*;
 use p256::elliptic_curve::group::prime::PrimeCurveAffine;
 

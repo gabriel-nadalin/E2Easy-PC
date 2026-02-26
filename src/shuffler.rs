@@ -1,4 +1,4 @@
-use crate::{G, Scalar, Element, types::ShuffleProof, utils::*};
+use crate::{G, Scalar, Element, types::proof::ShuffleProof, utils::*};
 use rand::random_range;
 use rayon::prelude::*;
 

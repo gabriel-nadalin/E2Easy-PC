@@ -1,7 +1,7 @@
 use mixnet_rust::Element;
 use mixnet_rust::io_helpers::read_json;
 use mixnet_rust::pedersen::Pedersen;
-use mixnet_rust::types::{InfoContest, RDCV, RDCVPrime, RDVPrime, TrackingCode, Vote, ZKPOutput};
+use mixnet_rust::types::{config::*, ballot::*, proof::*};
 use mixnet_rust::utils::hash;
 use p256::ecdsa::Signature;
 use p256::ecdsa::signature::Verifier;

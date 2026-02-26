@@ -1,4 +1,4 @@
-use mixnet_rust::{io_helpers::{read_json, request_user_input}, pedersen::Pedersen, types::{InfoContest, TrackingCode, Vote}, utils::{derive_nonces, hash}};
+use mixnet_rust::{io_helpers::{read_json, request_user_input}, pedersen::Pedersen, types::{config::*, ballot::*}, utils::{derive_nonces, hash}};
 
 fn main() {
     

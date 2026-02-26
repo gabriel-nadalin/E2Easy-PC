@@ -3,47 +3,8 @@ use p256::ecdsa::{Signature, SigningKey, signature::SignerMut};
 use rand_core::OsRng;
 use safer_ffi::derive_ReprC;
 use serde::Serialize;
-use crate::{Element, Scalar, pedersen::Pedersen, shuffler::Shuffler, types::*, utils::{derive_nonces, hash, random_scalar}};
+use crate::{Element, Scalar, pedersen::Pedersen, shuffler::Shuffler, types::{ballot::*, proof::*}, utils::{derive_nonces, hash, random_scalar}};
 
-struct TempBallot {
-    scalar_votes: Vec<Scalar>,
-    committed_votes: Vec<Element>,
-    nonce_seed: Scalar,
-    timestamp: String,
-    tracking_code: TrackingCode,
-}
-
-impl TempBallot {
-    pub fn new(
-        scalar_votes: Vec<Scalar>,
-        committed_votes: Vec<Element>,
-        nonce_seed: Scalar,
-        timestamp: String,
-        tracking_code: TrackingCode
-    ) -> Self {
-        Self {
-            scalar_votes,
-            committed_votes,
-            nonce_seed,
-            timestamp,
-            tracking_code,
-        }
-    }
-
-    pub fn empty() -> Self {
-        Self {
-            scalar_votes: Vec::new(),
-            committed_votes: Vec::new(),
-            nonce_seed: Scalar::ZERO,
-            timestamp: "".to_string(),
-            tracking_code: TrackingCode(Vec::new()),
-        }
-    }
-
-    pub fn commit(&self) -> CommittedBallot {
-        CommittedBallot::new(self.tracking_code.clone(), self.committed_votes.clone(), self.timestamp.clone())
-    }
-}
 
 #[derive_ReprC]
 #[repr(opaque)]

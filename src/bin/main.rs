@@ -1,4 +1,4 @@
-use mixnet_rust::{e2easy::E2Easy, io_helpers::{read_json, write_json_to_file}, pedersen::Pedersen, types::{InfoContest, Vote}, verifier::Verifier};
+use mixnet_rust::{e2easy::E2Easy, io_helpers::{read_json, write_json_to_file}, pedersen::Pedersen, types::{config::*, ballot::*}, verifier::Verifier};
 use std::time::Instant;
 
 #[cfg(target_arch = "x86_64")]

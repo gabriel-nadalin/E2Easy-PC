@@ -1,4 +1,4 @@
-use mixnet_rust::{io_helpers::write_json_to_file, types::{ContestInfo, CryptoParams, InfoContest}, utils::random_element};
+use mixnet_rust::{io_helpers::write_json_to_file, types::config::*, utils::random_element};
 
 
 const N: u32 = 5000;
