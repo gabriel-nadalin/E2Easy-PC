@@ -1,12 +1,13 @@
-use mixnet_rust::{e2easy::E2Easy, io_helpers::{read_json, write_json_to_file}, pedersen::Pedersen, types::{config::*, ballot::*}, utils::{derive_nonces, hash}};
+use hex::ToHex;
+use mixnet_rust::{e2easy::E2Easy, io_helpers::{read_json, write_json_to_file}, pedersen::Pedersen, types::*, utils::{derive_nonces, hash}};
 
 fn main() {
     // let (p, q, g) = U32ModGroup::get_group_params();
     // let group = U32ModGroup::new(p, q, g);
     // let pedersen = Pedersen::new(h)
 
-    let info_contest: InfoContest = read_json("./outputs/info_contest.json").unwrap();
-    let (h, h_list) = (info_contest.crypto.h, info_contest.crypto.h_list);
+    let election_config: ElectionConfig = read_json("./config/election_config.json").unwrap();
+    let (h, h_list) = (election_config.crypto.h, election_config.crypto.h_list);
     
     let mut e2easy = E2Easy::new(&h, h_list);
     let pedersen = Pedersen::new(&h);
@@ -53,7 +54,8 @@ fn main() {
         to_hash.2.push(committed_vote);
     }
     
-    assert_eq!(tc, TrackingCode(hash(&to_hash)));
+    let hashed: String = hash(&to_hash).encode_hex_upper();
+    assert_eq!(tc, hashed);
 
     println!("vote challenged!");
     // println!("{:#?} {:#?}\n\n", chal, e2easy.vote_table);
@@ -122,7 +124,8 @@ fn main() {
         to_hash.2.push(committed_vote);
     }
     
-    assert_eq!(tc, TrackingCode(hash(&to_hash)));
+    let hashed: String = hash(&to_hash).encode_hex_upper();
+    assert_eq!(tc, hashed);
 
     println!("vote challenged!");
     // println!("{:#?} {:#?}\n\n", chal, e2easy.vote_table);

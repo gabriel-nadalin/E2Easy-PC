@@ -1,7 +1,7 @@
 use safer_ffi::prelude::*;
 use crate::e2easy::E2Easy;
 use crate::io_helpers::read_json;
-use crate::types::{ballot::*, config::*};
+use crate::types::*;
 
 // Simple result wrapper
 #[derive_ReprC]
@@ -13,8 +13,8 @@ pub struct JsonResult {
 
 #[ffi_export]
 fn e2easy_new() -> Option<repr_c::Box<E2Easy>> {
-    let info_contest: InfoContest = read_json("./outputs/info_contest.json").ok()?;
-    let (h, h_list) = (info_contest.crypto.h, info_contest.crypto.h_list);
+    let election_config: ElectionConfig = read_json("./config/election_config.json").ok()?;
+    let (h, h_list) = (election_config.crypto.h, election_config.crypto.h_list);
     Some(Box::new(E2Easy::new(&h, h_list.to_vec())).into())
 }
 

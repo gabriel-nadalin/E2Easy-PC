@@ -1,4 +1,4 @@
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Serialize};
 use crate::{Element, Scalar, utils::scalar_from_bytes};
 
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
@@ -38,11 +38,11 @@ impl Vote {
 }
 
 pub struct TempBallot {
-    pub scalar_votes: Vec<Scalar>,
-    pub committed_votes: Vec<Element>,
-    pub nonce_seed: Scalar,
-    pub timestamp: String,
-    pub tracking_code: TrackingCode,
+    scalar_votes: Vec<Scalar>,
+    committed_votes: Vec<Element>,
+    nonce_seed: Scalar,
+    timestamp: String,
+    tracking_code: String,
 }
 
 impl TempBallot {
@@ -51,7 +51,7 @@ impl TempBallot {
         committed_votes: Vec<Element>,
         nonce_seed: Scalar,
         timestamp: String,
-        tracking_code: TrackingCode
+        tracking_code: String
     ) -> Self {
         Self {
             scalar_votes,
@@ -62,14 +62,24 @@ impl TempBallot {
         }
     }
 
-    pub fn empty() -> Self {
-        Self {
-            scalar_votes: Vec::new(),
-            committed_votes: Vec::new(),
-            nonce_seed: Scalar::ZERO,
-            timestamp: "".to_string(),
-            tracking_code: TrackingCode(Vec::new()),
-        }
+    pub fn scalar_votes(&self) -> &[Scalar] {
+        &self.scalar_votes
+    }
+
+    pub fn committed_votes(&self) -> &[Element] {
+        &self.committed_votes
+    }
+
+    pub fn nonce_seed(&self) -> Scalar {
+        self.nonce_seed.clone()
+    }
+
+    pub fn timestamp(&self) -> String {
+        self.timestamp.clone()
+    }
+
+    pub fn tracking_code(&self) -> String {
+        self.tracking_code.clone()
     }
 
     pub fn commit(&self) -> CommittedBallot {
@@ -79,13 +89,13 @@ impl TempBallot {
 
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 pub struct CommittedBallot {
-    pub tracking_code: TrackingCode,
-    pub committed_votes: Vec<Element>,
-    pub timestamp: String,
+    tracking_code: String,
+    committed_votes: Vec<Element>,
+    timestamp: String,
 }
 
 impl CommittedBallot {
-    pub fn new(tracking_code: TrackingCode, committed_votes: Vec<Element>, timestamp: String) -> Self {
+    pub fn new(tracking_code: String, committed_votes: Vec<Element>, timestamp: String) -> Self {
         Self {
             tracking_code,
             committed_votes,
@@ -93,30 +103,12 @@ impl CommittedBallot {
         }
     }
 
+    pub fn components(&self) -> (&String, &[Element], &str) {
+        (&self.tracking_code, &self.committed_votes, &self.timestamp)
+    }
+
     pub fn votes(&self) -> Vec<Element> {
         self.committed_votes.clone()
-    }
-}
-
-#[derive(Clone, Eq, Debug, PartialEq)]
-pub struct TrackingCode (pub Vec<u8>);
-
-impl Serialize for TrackingCode {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where S: serde::Serializer {
-        serializer.serialize_str(&hex::encode_upper(self.0.clone()))
-    }
-}
-
-impl<'de> Deserialize<'de> for TrackingCode {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let hex_string = String::deserialize(deserializer)?;
-        let bytes = hex::decode(&hex_string)
-            .map_err(serde::de::Error::custom)?;
-        Ok(TrackingCode(bytes))
     }
 }
 
@@ -133,13 +125,13 @@ impl RDVPrime {
 
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 pub struct RDCV {
-    tail: TrackingCode,
+    tail: String,
     entries: Vec<CommittedBallot>,
-    head: Option<TrackingCode>,
+    head: Option<String>,
 }
 
 impl RDCV {
-    pub fn new(tail: TrackingCode) -> Self {
+    pub fn new(tail: String) -> Self {
         Self {
             tail,
             entries: Vec::new(),
@@ -147,7 +139,7 @@ impl RDCV {
         }
     }
 
-    pub fn set_head(&mut self, head: TrackingCode) {
+    pub fn set_head(&mut self, head: String) {
         self.head = Some(head);
     }
 
@@ -159,11 +151,11 @@ impl RDCV {
         self.entries.iter().flat_map(|entry| entry.votes()).collect()
     }
 
-    pub fn tail(&self) -> &TrackingCode { &self.tail }
+    pub fn tail(&self) -> &String { &self.tail }
 
     pub fn entries(&self) -> &[CommittedBallot] { &self.entries }
 
-    pub fn head(&self) -> &Option<TrackingCode> { &self.head }
+    pub fn head(&self) -> &Option<String> { &self.head }
 }
 
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]

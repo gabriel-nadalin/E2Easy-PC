@@ -1,0 +1,17 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RDCVPrime",
+  "description": "Registro de Cédulas Vinculadas após shuffle",
+  "type": "object",
+  "required": ["entries"],
+  "properties": {
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[0-9A-F]{66}$",
+        "description": "Elemento SEC1 comprimido (33 bytes em hex maiúsculo)"
+      }
+    }
+  }
+}

@@ -1,0 +1,132 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ZKPOutput",
+  "description": "Saída da prova de conhecimento zero (shuffle proof + opening)",
+  "type": "object",
+  "required": ["verifying_key", "shuffle_proof", "m_list", "r_list"],
+  "properties": {
+    "verifying_key": {
+      "type": "string",
+      "pattern": "^[0-9A-F]+$",
+      "description": "Chave de verificação ECDSA P-256 (DER em hex maiúsculo)"
+    },
+    "shuffle_proof": {
+      "type": "object",
+      "required": ["t", "s", "c_list", "c_hat_list"],
+      "properties": {
+        "t": {
+          "type": "array",
+          "minItems": 5,
+          "maxItems": 5,
+          "items": [
+            {
+              "type": "string",
+              "pattern": "^[0-9A-F]{66}$",
+              "description": "Elemento t0"
+            },
+            {
+              "type": "string",
+              "pattern": "^[0-9A-F]{66}$",
+              "description": "Elemento t1"
+            },
+            {
+              "type": "string",
+              "pattern": "^[0-9A-F]{66}$",
+              "description": "Elemento t2"
+            },
+            {
+              "type": "string",
+              "pattern": "^[0-9A-F]{66}$",
+              "description": "Elemento t3"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^[0-9A-F]{66}$"
+              },
+              "description": "Lista t_hat"
+            }
+          ]
+        },
+        "s": {
+          "type": "array",
+          "minItems": 6,
+          "maxItems": 6,
+          "items": [
+            {
+              "type": "string",
+              "pattern": "^[0-9A-F]{64}$",
+              "description": "Scalar s0"
+            },
+            {
+              "type": "string",
+              "pattern": "^[0-9A-F]{64}$",
+              "description": "Scalar s1"
+            },
+            {
+              "type": "string",
+              "pattern": "^[0-9A-F]{64}$",
+              "description": "Scalar s2"
+            },
+            {
+              "type": "string",
+              "pattern": "^[0-9A-F]{64}$",
+              "description": "Scalar s3"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^[0-9A-F]{64}$"
+              },
+              "description": "Lista s_hat"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^[0-9A-F]{64}$"
+              },
+              "description": "Lista s_prime"
+            }
+          ]
+        },
+        "c_list": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[0-9A-F]{66}$"
+          },
+          "description": "Lista de compromissos c"
+        },
+        "c_hat_list": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[0-9A-F]{66}$"
+          },
+          "description": "Lista de compromissos c_hat"
+        }
+      }
+    },
+    "m_list": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[0-9A-F]{64}$",
+        "description": "Scalar (32 bytes em hex maiúsculo)"
+      },
+      "description": "Lista de mensagens (votos codificados)"
+    },
+    "r_list": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[0-9A-F]{64}$",
+        "description": "Scalar (32 bytes em hex maiúsculo)"
+      },
+      "description": "Lista de nonces (randomness)"
+    }
+  }
+}

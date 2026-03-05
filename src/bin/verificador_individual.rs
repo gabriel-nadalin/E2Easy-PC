@@ -1,4 +1,4 @@
-use mixnet_rust::{io_helpers::{read_json, request_user_input}, pedersen::Pedersen, types::{config::*, ballot::*}, utils::{derive_nonces, hash}};
+use mixnet_rust::{io_helpers::{read_json, request_user_input}, pedersen::Pedersen, types::*, utils::{derive_nonces, hash}};
 
 fn main() {
     
@@ -11,11 +11,10 @@ fn main() {
     let timestamp = request_user_input("Insira o carimbo de tempo: ");
     println!("Verificando o voto...");
     
-    let info_contest: InfoContest = read_json("./outputs/info_contest.json").unwrap();
-    let h= info_contest.crypto.h;
+    let election_config: ElectionConfig = read_json("./config/election_config.json").unwrap();
+    let h= election_config.crypto.h;
     let pedersen = Pedersen::new(&h);
     let votes = vec![Vote::new(0, voto1.parse::<u8>().unwrap()), Vote::new(1, voto2.parse::<u8>().unwrap())];
-    let previous_hash = TrackingCode(hex::decode(previous_hash).unwrap());
     let seed = hex::decode(nonce).unwrap();
     let nonces = derive_nonces(&seed, votes.len());
 

@@ -1,0 +1,54 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ElectionConfig",
+  "description": "Configuração de eleição com parâmetros criptográficos e informações de cargos",
+  "type": "object",
+  "required": ["crypto", "contests"],
+  "properties": {
+    "crypto": {
+      "type": "object",
+      "required": ["h", "h_list"],
+      "properties": {
+        "h": {
+          "type": "string",
+          "pattern": "^[0-9A-F]{66}$",
+          "description": "Elemento gerador (SEC1 comprimido, 33 bytes em hex maiúsculo)"
+        },
+        "h_list": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[0-9A-F]{66}$"
+          },
+          "minItems": 1,
+          "description": "Lista de elementos para compromissos (SEC1 comprimido)"
+        }
+      }
+    },
+    "contests": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["contest_id", "name", "num_choices"],
+        "properties": {
+          "contest_id": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Identificador único do cargo"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Nome do cargo"
+          },
+          "num_choices": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Número de opções disponíveis para este cargo"
+          }
+        }
+      },
+      "minItems": 1
+    }
+  }
+}

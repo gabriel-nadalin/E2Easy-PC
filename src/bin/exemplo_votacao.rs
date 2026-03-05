@@ -1,12 +1,12 @@
-use mixnet_rust::{e2easy::E2Easy, io_helpers::{read_json, request_user_input, write_json_to_file}, types::{config::*, ballot::*}};
+use mixnet_rust::{e2easy::E2Easy, io_helpers::{read_json, request_user_input, write_json_to_file}, types::*};
 
 const CHALLENGE: &str = "2";
 // const CAST: &str = "1";
 fn main () {
     println!("\n\n--------- Iniciando urna eletronica... ------------");
 
-    let info_contest: InfoContest = read_json("./outputs/info_contest.json").unwrap();
-    let (h, h_list) = (info_contest.crypto.h, info_contest.crypto.h_list);
+    let election_config: ElectionConfig = read_json("./config/election_config.json").unwrap();
+    let (h, h_list) = (election_config.crypto.h, election_config.crypto.h_list);
     
     let mut e2easy = E2Easy::new(&h, h_list);
 

@@ -1,4 +1,4 @@
-use mixnet_rust::{e2easy::E2Easy, io_helpers::{read_json, write_json_to_file}, pedersen::Pedersen, types::{config::*, ballot::*}, verifier::Verifier};
+use mixnet_rust::{e2easy::E2Easy, io_helpers::{read_json, write_json_to_file}, pedersen::Pedersen, types::*, verifier::Verifier};
 use std::time::Instant;
 
 #[cfg(target_arch = "x86_64")]
@@ -14,11 +14,11 @@ fn main() {
     let args: Vec<String> = std::env::args().collect();
     let voters: usize = args.get(1).and_then(|s| s.parse().ok()).unwrap_or(500);
 
-    let info_contest: InfoContest = read_json("./outputs/info_contest.json").unwrap();
-    let available = info_contest.crypto.h_list.len() / info_contest.contests.len();
+    let election_config: ElectionConfig = read_json("./config/election_config.json").unwrap();
+    let available = election_config.crypto.h_list.len() / election_config.contests.len();
     let n = (voters).min(available);
     
-    let (h, h_list) = (info_contest.crypto.h, info_contest.crypto.h_list.iter().take(n * info_contest.contests.len()).cloned().collect::<Vec<_>>());
+    let (h, h_list) = (election_config.crypto.h, election_config.crypto.h_list.iter().take(n * election_config.contests.len()).cloned().collect::<Vec<_>>());
     let mut e2easy = E2Easy::new(&h, h_list.clone());
     
     println!("N = {:?}", n);
@@ -29,8 +29,8 @@ fn main() {
     for i in 0..n {
         let mut votes = Vec::new();
         
-        // Vote for each contest defined in info_contest
-        for (contest_idx, contest) in info_contest.contests.iter().enumerate() {
+        // Vote for each contest defined in election_config
+        for (contest_idx, contest) in election_config.contests.iter().enumerate() {
             let choice = (i % contest.num_choices as usize) as u8;
             votes.push(Vote { 
                 contest: contest_idx as u8, 

@@ -6,7 +6,7 @@ const CONTESTS: u32 = 6;
 fn main() {
     println!("Criando uma nova eleição com {} cargos e {} eleitores", CONTESTS, N);
 
-    let info = InfoContest {
+    let config = ElectionConfig {
         crypto: CryptoParams {
             h: random_element(),
             h_list: (0..N).into_iter().map(|_| random_element()).collect::<Vec<_>>(),
@@ -20,6 +20,6 @@ fn main() {
             }).collect(),
     };
     
-    write_json_to_file(&info, "./outputs/info_contest.json").unwrap();
-    println!("Arquivos criados em /outputs/");
+    write_json_to_file(&config, "./config/election_config.json").unwrap();
+    println!("Arquivos criados em /config/");
 }

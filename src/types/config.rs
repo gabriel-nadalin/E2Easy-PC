@@ -15,7 +15,7 @@ pub struct ContestInfo {
 }
 
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
-pub struct InfoContest {
+pub struct ElectionConfig {
     pub crypto: CryptoParams,       
     pub contests: Vec<ContestInfo>, 
 }

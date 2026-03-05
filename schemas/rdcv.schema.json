@@ -1,0 +1,53 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RDCV",
+  "description": "Registro de Cédulas Vinculadas e Verificadas (cadeia de ballots)",
+  "type": "object",
+  "required": ["tail", "entries"],
+  "properties": {
+    "tail": {
+      "type": "string",
+      "pattern": "^[0-9A-F]{64}$",
+      "description": "Tracking code inicial (cauda da cadeia, 32 bytes em hex maiúsculo)"
+    },
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["tracking_code", "committed_votes", "timestamp"],
+        "properties": {
+          "tracking_code": {
+            "type": "string",
+            "pattern": "^[0-9A-F]{64}$",
+            "description": "Código de rastreamento da cédula"
+          },
+          "committed_votes": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[0-9A-F]{66}$"
+            },
+            "description": "Votos vinculados (elementos SEC1 comprimidos)"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp RFC3339 do voto"
+          }
+        }
+      }
+    },
+    "head": {
+      "oneOf": [
+        {
+          "type": "string",
+          "pattern": "^[0-9A-F]{64}$"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Tracking code de fechamento (cabeça da cadeia, null até tally)"
+    }
+  }
+}

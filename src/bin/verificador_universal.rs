@@ -1,7 +1,8 @@
+use hex::ToHex;
 use mixnet_rust::Element;
 use mixnet_rust::io_helpers::read_json;
 use mixnet_rust::pedersen::Pedersen;
-use mixnet_rust::types::{config::*, ballot::*, proof::*};
+use mixnet_rust::types::*;
 use mixnet_rust::utils::hash;
 use p256::ecdsa::Signature;
 use p256::ecdsa::signature::Verifier;
@@ -9,7 +10,7 @@ use p256::ecdsa::signature::Verifier;
 fn main() {
     println!("Verificando as eleições em /outputs");
 
-    let info_contest: InfoContest = read_json("./outputs/info_contest.json").unwrap();
+    let election_config: ElectionConfig = read_json("./config/election_config.json").unwrap();
 
     let rdv_prime: RDVPrime = read_json("./outputs/rdv_prime.json").unwrap();
     let rdcv: RDCV = read_json("./outputs/rdcv.json").unwrap();
@@ -29,8 +30,8 @@ fn main() {
 
     let pi = zkp_output.shuffle_proof;
 
-    let h = info_contest.crypto.h;
-    let h_list: Vec<Element> = info_contest.crypto.h_list.iter().take(rdcv_prime.entries().len()).cloned().collect();
+    let h = election_config.crypto.h;
+    let h_list: Vec<Element> = election_config.crypto.h_list.iter().take(rdcv_prime.entries().len()).cloned().collect();
 
     println!("Verificando assinaturas");
 
@@ -45,13 +46,19 @@ fn main() {
     let mut prev_hash = tail.clone();
 
     for entry in rdcv.entries() {
-        let to_hash = (prev_hash, &entry.timestamp, &entry.committed_votes);
-        let tc = TrackingCode(hash(&to_hash));
-        assert_eq!(tc, entry.tracking_code);
+        let (
+            tracking_code,
+            committed_votes,
+            timestamp,
+        ) = entry.components();
+        let to_hash = (prev_hash, timestamp, committed_votes);
+        let tc = hash(&to_hash).encode_hex_upper();
+        assert_eq!(tc, *tracking_code);
         prev_hash = tc;
     }
     let to_hash = (prev_hash, b"CLOSE");
-    assert_eq!(TrackingCode(hash(&to_hash)), head);
+    let hash: String = hash(&to_hash).encode_hex_upper();
+    assert_eq!(hash, head);
 
     println!("Verificando prova de embaralhamento");
 

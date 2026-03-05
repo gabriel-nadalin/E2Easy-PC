@@ -1,0 +1,7 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Signature",
+  "description": "Assinatura ECDSA P-256 (formato hex maiúsculo)",
+  "type": "string",
+  "pattern": "^[0-9A-F]{128}$"
+}

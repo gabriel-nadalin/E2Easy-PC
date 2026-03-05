@@ -1,0 +1,28 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RDVPrime",
+  "description": "Registro de Votos Decifrados (após shuffle e abertura)",
+  "type": "object",
+  "required": ["entries"],
+  "properties": {
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["contest", "choice"],
+        "properties": {
+          "contest": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "ID do cargo"
+          },
+          "choice": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Escolha do eleitor"
+          }
+        }
+      }
+    }
+  }
+}

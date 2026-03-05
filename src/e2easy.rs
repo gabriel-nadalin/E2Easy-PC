@@ -1,9 +1,10 @@
 use chrono::Utc;
+use hex::ToHex;
 use p256::ecdsa::{Signature, SigningKey, signature::SignerMut};
 use rand_core::OsRng;
 use safer_ffi::derive_ReprC;
 use serde::Serialize;
-use crate::{Element, Scalar, pedersen::Pedersen, shuffler::Shuffler, types::{ballot::*, proof::*}, utils::{derive_nonces, hash, random_scalar}};
+use crate::{Element, Scalar, pedersen::Pedersen, shuffler::Shuffler, types::*, utils::{derive_nonces, hash, random_scalar}};
 
 
 #[derive_ReprC]
@@ -15,8 +16,8 @@ pub struct E2Easy {
     rdcv: RDCV,
     m_list: Vec<Scalar>,
     r_list: Vec<Scalar>,
-    temp_ballot: TempBallot,
-    prev_tracking_code: TrackingCode,
+    temp_ballot: Option<TempBallot>,
+    prev_tracking_code: String,
 }
 
 impl E2Easy {
@@ -26,12 +27,12 @@ impl E2Easy {
             h_list,
             pedersen: Pedersen::new(h),
             sig_key: SigningKey::random(&mut OsRng),
-            rdcv: RDCV::new(TrackingCode(hash(b"start"))),
+            rdcv: RDCV::new(hash("start").encode_hex_upper()),
             m_list: Vec::new(),
             r_list: Vec::new(),
-            temp_ballot: TempBallot::empty(),
+            temp_ballot: None,
             // TODO: criat string de configuracao Q para a cauda do RDCV
-            prev_tracking_code: TrackingCode(hash(b"start")),
+            prev_tracking_code: hash("start").encode_hex_upper(),
         }
     }
 
@@ -39,7 +40,7 @@ impl E2Easy {
         todo!()
     }
 
-    pub fn vote(&mut self, votes: Vec<Vote>) -> (TrackingCode, String) {
+    pub fn vote(&mut self, votes: Vec<Vote>) -> (String, String) {
         let nonce_seed = random_scalar();
         let nonces = derive_nonces(&nonce_seed.to_bytes(), votes.len());
 
@@ -57,37 +58,35 @@ impl E2Easy {
         }
         let to_hash = (&self.prev_tracking_code, &timestamp, &committed_votes);
         
-        let tracking_code = TrackingCode(hash(&to_hash));
+        let tracking_code: String = hash(&to_hash).encode_hex_upper();
         
-        self.temp_ballot = TempBallot::new(scalar_votes, committed_votes, nonce_seed, timestamp.clone(), tracking_code.clone());
+        self.temp_ballot = Some(TempBallot::new(scalar_votes, committed_votes, nonce_seed, timestamp.clone(), tracking_code.clone()));
         (tracking_code.clone(), timestamp.clone())
     }
 
-    pub fn challenge(&mut self) -> (TrackingCode, Vec<Element>, Scalar) {
-        let output = (self.prev_tracking_code.clone(), self.temp_ballot.committed_votes.clone(), self.temp_ballot.nonce_seed.clone());
-
-        self.temp_ballot = TempBallot::empty();
+    pub fn challenge(&mut self) -> (String, Vec<Element>, Scalar) {
+        let ballot = self.temp_ballot.take().expect("No ballot to challenge");
+        let output = (self.prev_tracking_code.clone(), ballot.committed_votes().to_vec(), ballot.nonce_seed());
 
         output
     }
 
     pub fn cast(&mut self) -> Signature {
-        let signature = self.sig_key.sign(&self.temp_ballot.tracking_code.0);
-        let entry = self.temp_ballot.commit();
+        let ballot = self.temp_ballot.take().expect("No ballot to cast");
+        let signature = self.sig_key.sign(ballot.tracking_code().as_bytes());
+        let entry = ballot.commit();
         self.rdcv.add_entry(entry);
-        self.m_list.extend_from_slice(&self.temp_ballot.scalar_votes);
-        self.r_list.extend_from_slice(&derive_nonces(&self.temp_ballot.nonce_seed.to_bytes(), self.temp_ballot.scalar_votes.len()));
+        self.m_list.extend_from_slice(&ballot.scalar_votes());
+        self.r_list.extend_from_slice(&derive_nonces(&ballot.nonce_seed().to_bytes(), ballot.scalar_votes().len()));
 
-        self.prev_tracking_code = self.temp_ballot.tracking_code.clone();
-
-        self.temp_ballot = TempBallot::empty();
+        self.prev_tracking_code = ballot.tracking_code().clone();
         
         signature
     }
 
     pub fn tally(&mut self) -> (RDVPrime, RDCV, RDCVPrime, ZKPOutput) {
-        let to_hash = (&self.prev_tracking_code, b"CLOSE");
-        let head = TrackingCode(hash(&to_hash));
+        let to_hash = (&self.prev_tracking_code, "CLOSE");
+        let head = hash(&to_hash).encode_hex_upper();
         self.rdcv.set_head(head);
         
         let c_list = self.rdcv.votes();
