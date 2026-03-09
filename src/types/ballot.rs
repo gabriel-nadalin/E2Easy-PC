@@ -45,7 +45,7 @@ impl Vote {
     }
     
     /// converts vote to scalar for Pedersen commitment (bijective)
-    /// vote is encoded as: contest || choice (8 bytes total)
+    /// vote is encoded as: choice || contest (8 bytes total)
     /// this is always < p256 order (~32 bytes), so no reduction needed
     pub fn to_scalar(&self) -> Scalar {
         let bytes = self.to_bytes(); // 8 bytes total
