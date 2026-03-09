@@ -17,11 +17,11 @@ fn main () {
         }
 
         let vote1 = request_user_input("Por favor, digite seu voto para presidente: ")
-            .parse::<u8>().unwrap();
+            .parse::<u32>().unwrap();
         println!("Voto confirmado: {}", vote1);
 
         let vote2 = request_user_input("Por favor, digite seu voto para governador: ")
-            .parse::<u8>().unwrap();
+            .parse::<u32>().unwrap();
         println!("Voto confirmado: {}", vote2);
 
         let votes = vec![Vote{ contest: 0, choice: vote1 }, Vote{ contest: 1, choice: vote2 }];
@@ -63,4 +63,3 @@ fn main () {
     println!("Arquivos criados em /outputs/");
     println!("--------- Urna eletrônica encerrada ------------\n\n");
 }
-

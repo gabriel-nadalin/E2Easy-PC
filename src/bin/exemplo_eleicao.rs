@@ -3,8 +3,10 @@ use mixnet_rust::{io_helpers::write_json_to_file, types::config::*, utils::rando
 
 const N: u32 = 5000;
 const CONTESTS: u32 = 6;
+const OPTIONS: u32 = 4;
+
 fn main() {
-    println!("Criando uma nova eleição com {} cargos e {} eleitores", CONTESTS, N);
+    println!("Criando uma nova eleição com {} cargos, {} candidatos por cargo e {} votos", CONTESTS, OPTIONS, N);
 
     let config = ElectionConfig {
         crypto: CryptoParams {
@@ -16,7 +18,12 @@ fn main() {
             .map(|i| ContestInfo {
                 contest_id: i,
                 name: format!("contest_{i}"),
-                num_choices: 5,
+                options: (0..OPTIONS)
+                    .into_iter()
+                    .map(|i| OptionInfo {
+                        option_id: i,
+                        name: format!("choice_{i}")
+                    }).collect()
             }).collect(),
     };
     

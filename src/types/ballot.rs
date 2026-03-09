@@ -1,39 +1,73 @@
 use serde::{Deserialize, Serialize};
-use crate::{Element, Scalar, utils::scalar_from_bytes};
+use crate::{Element, Scalar, utils::*};
 
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 pub struct Vote {
-    pub contest: u8,
-    pub choice: u8,
+    pub choice: u32,
+    pub contest: u32,
 }
 
 impl Vote {
-    pub fn new(contest: u8, choice: u8) -> Self {
+    pub fn new(choice: u32, contest: u32) -> Self {
         Self {
+            choice,
             contest,
-            choice
         }
     }
 
+    /// converts vote to big-endian byte representation (8 bytes total)
     pub fn to_bytes(&self) -> Vec<u8> {
-        [self.contest.to_be_bytes().as_slice(), self.choice.to_be_bytes().as_slice()].concat()
+        let mut bytes = Vec::with_capacity(8);
+        bytes.extend_from_slice(&self.choice.to_be_bytes());
+        bytes.extend_from_slice(&self.contest.to_be_bytes());
+        bytes
     }
 
-    pub fn from_bytes(bytes: &[u8]) -> Self {
-        let n = bytes.len();
-        let contest = bytes[n-2];
-        let choice = bytes[n-1];
-        Self::new(contest, choice)
+    /// converts from big-endian bytes
+    /// returns None if slice length is invalid
+    pub fn from_bytes(bytes: &[u8]) -> Option<Self> {
+        if bytes.len() < 8 {
+            return None;
+        }
+
+        let choice_bytes: [u8; 4] = bytes[bytes.len()-8..bytes.len()-4]
+            .try_into()
+            .ok()?;
+
+        let contest_bytes: [u8; 4] = bytes[bytes.len()-4..]
+            .try_into()
+            .ok()?;
+        
+        Some(Self::new(
+            u32::from_be_bytes(choice_bytes),
+            u32::from_be_bytes(contest_bytes)
+        ))
     }
     
+    /// converts vote to scalar for Pedersen commitment (bijective)
+    /// vote is encoded as: contest || choice (8 bytes total)
+    /// this is always < p256 order (~32 bytes), so no reduction needed
     pub fn to_scalar(&self) -> Scalar {
-        let bytes = self.to_bytes();
-        scalar_from_bytes(&bytes)
+        let bytes = self.to_bytes(); // 8 bytes total
+        
+        // pad to 32 bytes (left-pad with zeros)
+        let mut padded = [0u8; 32];
+        padded[24..].copy_from_slice(&bytes); // place at end (big-endian)
+        
+        // this will always succeed since 8 bytes << scalar field size
+        scalar_from_bytes_strict(&padded)
+            .expect("8-byte vote encoding always fits in scalar field")
     }
 
-    pub fn from_scalar(scalar: Scalar) -> Self {
-        let bytes = scalar.to_bytes();
-        Self::from_bytes(&bytes)
+    /// reconstructs vote from scalar (bijective inverse)
+    /// returns None if scalar doesn't represent a valid vote encoding
+    pub fn from_scalar(scalar: &Scalar) -> Option<Self> {
+        let bytes = scalar.to_bytes(); // 32 bytes
+        
+        // extract the last 8 bytes (where we encoded the vote)
+        let vote_bytes = &bytes[24..];
+        
+        Self::from_bytes(vote_bytes)
     }
 }
 

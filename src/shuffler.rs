@@ -116,7 +116,7 @@ impl Shuffler {
             .into_par_iter()
             .map(|i| {
                 let to_hash = (y, i);
-                scalar_from_bytes(&hash(&to_hash))
+                hash2scalar(&to_hash)
             })
             .collect();
 
@@ -159,13 +159,13 @@ impl Shuffler {
             }
         }
 
-        // conversao para representacao afim eh necessaria para serializacao canonica
         let y = (
             commit_list,
             commit_prime_list,
             &c_list,
             &c_hat_list,
         );
+        // conversao para representacao afim eh necessaria para serializacao canonica
         let t = (
             t0.into(),
             t1.into(),
@@ -174,7 +174,7 @@ impl Shuffler {
             t_hat_list.into_iter().map(|p| p.into()).collect::<Vec<_>>()
         );
         let to_hash = (y, &t);
-        let c = scalar_from_bytes(&hash(&to_hash));
+        let c = hash2scalar(&to_hash);
 
         let s0: Scalar = w_list[0] + (c * &r_bar);
         let s1: Scalar = w_list[1] + (c * &r_hat);

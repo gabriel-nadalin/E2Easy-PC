@@ -1,9 +1,8 @@
-use hex::ToHex;
 use mixnet_rust::Element;
 use mixnet_rust::io_helpers::read_json;
 use mixnet_rust::pedersen::Pedersen;
 use mixnet_rust::types::*;
-use mixnet_rust::utils::hash;
+use mixnet_rust::utils::hash2str;
 use p256::ecdsa::Signature;
 use p256::ecdsa::signature::Verifier;
 
@@ -52,12 +51,12 @@ fn main() {
             timestamp,
         ) = entry.components();
         let to_hash = (prev_hash, timestamp, committed_votes);
-        let tc = hash(&to_hash).encode_hex_upper();
+        let tc = hash2str(&to_hash);
         assert_eq!(tc, *tracking_code);
         prev_hash = tc;
     }
     let to_hash = (prev_hash, b"CLOSE");
-    let hash: String = hash(&to_hash).encode_hex_upper();
+    let hash: String = hash2str(&to_hash);
     assert_eq!(hash, head);
 
     println!("Verificando prova de embaralhamento");
@@ -72,7 +71,7 @@ fn main() {
 
     assert!(pedersen.verify_list(&m_list, &r_list, commit_prime_list));
 
-    let votes = m_list.iter().map(|m| Vote::from_scalar(*m)).collect();
+    let votes = m_list.iter().map(|m| Vote::from_scalar(m).unwrap()).collect();
     let rdv_prime_m = RDVPrime::new(votes);
 
     assert_eq!(rdv_prime, rdv_prime_m);

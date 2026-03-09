@@ -10,7 +10,6 @@ pub mod io_helpers;
 pub mod ffi;
 
 pub const G: ProjectivePoint = ProjectivePoint::GENERATOR;
-pub const SIZE: usize = 256;
 pub type Element = AffinePoint;
 pub type Scalar = p256::Scalar;
 

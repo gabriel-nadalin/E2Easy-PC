@@ -31,9 +31,9 @@ fn main() {
         
         // Vote for each contest defined in election_config
         for (contest_idx, contest) in election_config.contests.iter().enumerate() {
-            let choice = (i % contest.num_choices as usize) as u8;
+            let choice = (i % contest.options.len() as usize) as u32;
             votes.push(Vote { 
-                contest: contest_idx as u8, 
+                contest: contest_idx as u32, 
                 choice 
             });
         }

@@ -32,7 +32,7 @@ impl Verifier {
             .into_par_iter()
             .map(|i| {
                 let to_hash = (&y, i);
-                scalar_from_bytes(&hash(&to_hash))
+                hash2scalar(&to_hash)
             })
             .collect();
 
@@ -44,7 +44,6 @@ impl Verifier {
         let c_tilde = summation((0..self.n).map(|i| c_list[i]      * u_list[i]).collect());
         let e_prime = summation((0..self.n).map(|i| commit_list[i] * u_list[i]).collect());
 
-        // conversao para representacao afim eh necessaria para serializacao canonica
         let y = (
             commit_list,
             commit_prime_list,
@@ -52,7 +51,7 @@ impl Verifier {
             &c_hat_list,
         );
         let to_hash = (y, &t);
-        let c = scalar_from_bytes(&hash(&to_hash));
+        let c = hash2scalar(&to_hash);
 
         let t_prime_0: Element = ((G * s.0) - (c_bar * c)).to_affine();
         let t_prime_1: Element = ((G * s.1) - (c_hat * c)).to_affine();
@@ -69,7 +68,6 @@ impl Verifier {
         }
 
         let t_prime = (t_prime_0, t_prime_1, t_prime_2, t_prime_3, t_hat_prime_list);
-        // println!("{:#?}", t_prime);
         return t == t_prime
     }
 }

@@ -5,7 +5,7 @@ use serde::de::DeserializeOwned;
 
 /// Writes a serializable object to a JSON file.
 pub fn write_json_to_file<T: Serialize>(value: &T, path: &str) -> std::io::Result<()> {
-    let json = serde_json::to_vec_pretty(value)?;
+    let json = serde_json_canonicalizer::to_vec(value)?;
     let mut file = File::create(path)?;
     file.write_all(&json)?;
     Ok(())

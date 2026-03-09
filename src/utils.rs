@@ -1,6 +1,7 @@
-use p256::{FieldBytes, ProjectivePoint, elliptic_curve::{Field, PrimeField}};
+use hex::ToHex;
+use p256::{FieldBytes, ProjectivePoint, U256, elliptic_curve::{Field, PrimeField, ops::Reduce}};
 use serde::Serialize;
-use crate::{Scalar, Element, G, SIZE};
+use crate::{Scalar, Element, G};
 use sha2::{Digest, Sha256};
 use rand_core::OsRng;
 
@@ -22,26 +23,35 @@ pub fn summation (list: Vec<ProjectivePoint>) -> ProjectivePoint {
     return sum
 }
 
-pub fn scalar_from_bytes (bytes: &[u8]) -> Scalar {
-    let mut arr = [0; SIZE/8];
-    for (i, val) in bytes.into_iter().take(SIZE/8).rev().enumerate() {
-        arr[SIZE/8-1 - i] = *val;
+
+// strict: only accepts canonical 32-byte scalar encoding.
+pub fn scalar_from_bytes_strict(bytes: &[u8]) -> Option<Scalar> {
+    if bytes.len() != 32 {
+        return None;
     }
-    return Scalar::from_repr(*FieldBytes::from_slice(&arr)).unwrap()
+
+    let mut arr = [0u8; 32];
+    arr.copy_from_slice(bytes);
+
+    Scalar::from_repr(FieldBytes::from(arr)).into()
 }
 
-pub fn derive_nonces (seed: &[u8], count: usize) -> Vec<Scalar> {
+pub fn derive_nonces(seed: &Scalar, count: usize) -> Vec<Scalar> {
     let mut nonces = Vec::with_capacity(count);
     for i in 0..count {
-        let mut hasher = Sha256::new();
-        hasher.update(seed);
-        hasher.update(i.to_be_bytes());
-        let hash = hasher.finalize();
-        nonces.push(scalar_from_bytes(&hash));
+        let to_hash = (seed, i);
+        nonces.push(hash2scalar(&to_hash));
     }
     nonces
 }
 
-pub fn hash<T: Serialize + ?Sized>(obj: &T) -> Vec<u8> {
-    Sha256::digest(serde_json::to_vec(&obj).unwrap()).to_vec()
+/// hashes a serializable object into a hex string
+pub fn hash2str<T: Serialize + ?Sized>(obj: &T) -> String {
+    Sha256::digest(serde_json_canonicalizer::to_vec(&obj).unwrap()).encode_hex_upper()
+}
+
+/// hashes a serializable object into a scalar
+pub fn hash2scalar<T: Serialize + ?Sized>(obj: &T) -> Scalar {
+    let digest = Sha256::digest(serde_json_canonicalizer::to_vec(&obj).unwrap());
+    <Scalar as Reduce<U256>>::reduce_bytes(&FieldBytes::from(digest))
 }

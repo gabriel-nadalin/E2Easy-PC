@@ -1,5 +1,9 @@
-use hex::ToHex;
-use mixnet_rust::{e2easy::E2Easy, io_helpers::{read_json, write_json_to_file}, pedersen::Pedersen, types::*, utils::{derive_nonces, hash}};
+use mixnet_rust::{
+    e2easy::E2Easy,
+    io_helpers::{read_json, write_json_to_file},
+    pedersen::Pedersen, types::*,
+    utils::{derive_nonces, hash2str}
+};
 
 fn main() {
     // let (p, q, g) = U32ModGroup::get_group_params();
@@ -43,19 +47,20 @@ fn main() {
 
     let chal = e2easy.challenge();
     let (last_tc, _commits, nonce_seed) = chal.clone();
-    let nonces = derive_nonces(&nonce_seed.to_bytes(), votes.len());
+    let nonces = derive_nonces(&nonce_seed, votes.len());
     
-    let mut to_hash = (last_tc.clone(), ts.clone(), Vec::new());
+    let mut committed_votes = Vec::new();
 
     for (vote, nonce) in votes.iter().zip(nonces) {
         let encoded_vote = vote.to_scalar();
         let committed_vote = pedersen.commit(&encoded_vote, &nonce);
-
-        to_hash.2.push(committed_vote);
+        
+        committed_votes.push(committed_vote);
     }
     
-    let hashed: String = hash(&to_hash).encode_hex_upper();
-    assert_eq!(tc, hashed);
+    let to_hash = (last_tc, ts, committed_votes);
+
+    assert_eq!(tc, hash2str(&to_hash));
 
     println!("vote challenged!");
     // println!("{:#?} {:#?}\n\n", chal, e2easy.vote_table);
@@ -113,19 +118,20 @@ fn main() {
 
     let chal = e2easy.challenge();
     let (last_tc, _commits, nonce_seed) = chal.clone();
-    let nonces = derive_nonces(&nonce_seed.to_bytes(), votes.len());
+    let nonces = derive_nonces(&nonce_seed, votes.len());
     
-    let mut to_hash = (last_tc.clone(), ts.clone(), Vec::new());
+    let mut committed_votes = Vec::new();
 
     for (vote, nonce) in votes.iter().zip(nonces) {
         let encoded_vote = vote.to_scalar();
         let committed_vote = pedersen.commit(&encoded_vote, &nonce);
-
-        to_hash.2.push(committed_vote);
+        
+        committed_votes.push(committed_vote);
     }
     
-    let hashed: String = hash(&to_hash).encode_hex_upper();
-    assert_eq!(tc, hashed);
+    let to_hash = (last_tc, ts, committed_votes);
+
+    assert_eq!(tc, hash2str(&to_hash));
 
     println!("vote challenged!");
     // println!("{:#?} {:#?}\n\n", chal, e2easy.vote_table);

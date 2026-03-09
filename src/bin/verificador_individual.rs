@@ -1,9 +1,9 @@
-use mixnet_rust::{io_helpers::{read_json, request_user_input}, pedersen::Pedersen, types::*, utils::{derive_nonces, hash}};
+use mixnet_rust::{io_helpers::{read_json, request_user_input}, pedersen::Pedersen, types::*, utils::{derive_nonces, hash2str, scalar_from_bytes_strict}};
 
 fn main() {
     
     println!("Verificando um voto individual");
-    let tc: String = request_user_input("Insira o tracking code: ");
+    let tc = request_user_input("Insira o tracking code: ");
     let voto1 = request_user_input("Insira o voto para presidente: ");
     let voto2 = request_user_input("Insira o voto para governador: ");
     let previous_hash = request_user_input("Insira o hash anterior: ");
@@ -14,19 +14,19 @@ fn main() {
     let election_config: ElectionConfig = read_json("./config/election_config.json").unwrap();
     let h= election_config.crypto.h;
     let pedersen = Pedersen::new(&h);
-    let votes = vec![Vote::new(0, voto1.parse::<u8>().unwrap()), Vote::new(1, voto2.parse::<u8>().unwrap())];
-    let seed = hex::decode(nonce).unwrap();
+    let votes = vec![Vote::new(voto1.parse::<u32>().unwrap(), 0), Vote::new(voto2.parse::<u32>().unwrap(), 1)];
+    let seed = scalar_from_bytes_strict(&hex::decode(nonce).unwrap()).unwrap();
     let nonces = derive_nonces(&seed, votes.len());
 
-    let mut to_hash = (previous_hash, timestamp, Vec::new());
-
+    let mut committed_votes = Vec::new();
     for (vote, nonce) in votes.iter().zip(nonces) {
         let encoded_vote = vote.to_scalar();
         let committed_vote = pedersen.commit(&encoded_vote, &nonce);
 
-        to_hash.2.push(committed_vote);
+        committed_votes.push(committed_vote);
     }
+    let to_hash = (previous_hash, timestamp, &committed_votes);
 
-    assert_eq!(tc, hex::encode_upper(hash(&to_hash)), "Resultado: Erro! O voto NÃO foi gerado corretamente.");
+    assert_eq!(tc, hash2str(&to_hash), "Resultado: Erro! O voto NÃO foi gerado corretamente.");
     println!("Resultado: Sucesso! O voto foi gerado corretamente.");
 }

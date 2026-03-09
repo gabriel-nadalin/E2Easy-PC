@@ -11,7 +11,13 @@ pub struct CryptoParams {
 pub struct ContestInfo {
     pub contest_id: u32,
     pub name: String,
-    pub num_choices: u16,       // total options available
+    pub options: Vec<OptionInfo>,       // total options available
+}
+
+#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
+pub struct OptionInfo {
+    pub option_id: u32,
+    pub name: String
 }
 
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
