@@ -1,4 +1,4 @@
-use mixnet_rust::{io_helpers::{read_json, request_user_input}, pedersen::Pedersen, types::*, utils::{derive_nonces, hash2str, scalar_from_bytes_strict}};
+use e2easy_pc::{io_helpers::{read_json, request_user_input}, pedersen::Pedersen, types::*, utils::{derive_nonces, hash2str, scalar_from_bytes_strict}};
 
 fn main() {
     
@@ -14,7 +14,7 @@ fn main() {
     let election_config: ElectionConfig = read_json("./config/election_config.json").unwrap();
     let h= election_config.crypto.h;
     let pedersen = Pedersen::new(&h);
-    let votes = vec![Vote::new(voto1.parse::<u32>().unwrap(), 0), Vote::new(voto2.parse::<u32>().unwrap(), 1)];
+    let votes = vec![Vote::new(0, voto1.parse::<u32>().unwrap()), Vote::new(1, voto2.parse::<u32>().unwrap())];
     let seed = scalar_from_bytes_strict(&hex::decode(nonce).unwrap()).unwrap();
     let nonces = derive_nonces(&seed, votes.len());
 

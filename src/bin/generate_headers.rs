@@ -1,3 +1,3 @@
 fn main() -> ::std::io::Result<()> {
-    ::mixnet_rust::generate_headers()
+    ::e2easy_pc::generate_headers()
 }

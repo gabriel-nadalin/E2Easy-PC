@@ -1,4 +1,4 @@
-# mixnet-rust
+# E2Easy-PC
 
 ## Requisitos
 - Linux
@@ -46,11 +46,11 @@ cargo build --release
 ```
 
 2. A biblioteca ficará em:
-`target/release/libmixnet_rust.a`
+`target/release/libe2easy_pc.a`
 
 3. Inclua o header gerado (`e2easy.h`) no seu projeto C/C++ e linke com a lib estática:
 ```bash
-gcc -o app main.c -I. -Ltarget/release -lmixnet_rust -lpthread -ldl
+gcc -o app main.c -I. -Ltarget/release -le2easy_pc -lpthread -ldl
 ```
 
 > Ajuste os flags conforme seu toolchain e dependências do sistema.
@@ -61,4 +61,4 @@ gcc -o app main.c -I. -Ltarget/release -lmixnet_rust -lpthread -ldl
 
 ## Notas
 - Para executar corretamente os exemplos, garanta que os arquivos JSON esperados existam.
-- Em caso de erro de link, confira se o caminho para `libmixnet_rust.a` está correto.
+- Em caso de erro de link, confira se o caminho para `libe2easy_pc.a` está correto.

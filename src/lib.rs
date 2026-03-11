@@ -13,7 +13,6 @@ pub const G: ProjectivePoint = ProjectivePoint::GENERATOR;
 pub type Element = AffinePoint;
 pub type Scalar = p256::Scalar;
 
-#[cfg(feature = "headers")]
 pub fn generate_headers() -> std::io::Result<()> {
     safer_ffi::headers::builder()
         .to_file("e2easy.h")?

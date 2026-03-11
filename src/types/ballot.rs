@@ -3,23 +3,23 @@ use crate::{Element, Scalar, utils::*};
 
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 pub struct Vote {
-    pub choice: u32,
     pub contest: u32,
+    pub choice: u32,
 }
 
 impl Vote {
-    pub fn new(choice: u32, contest: u32) -> Self {
+    pub fn new(contest: u32, choice: u32) -> Self {
         Self {
-            choice,
             contest,
+            choice,
         }
     }
 
     /// converts vote to big-endian byte representation (8 bytes total)
     pub fn to_bytes(&self) -> Vec<u8> {
         let mut bytes = Vec::with_capacity(8);
-        bytes.extend_from_slice(&self.choice.to_be_bytes());
         bytes.extend_from_slice(&self.contest.to_be_bytes());
+        bytes.extend_from_slice(&self.choice.to_be_bytes());
         bytes
     }
 
@@ -30,22 +30,22 @@ impl Vote {
             return None;
         }
 
-        let choice_bytes: [u8; 4] = bytes[bytes.len()-8..bytes.len()-4]
+        let contest_bytes: [u8; 4] = bytes[bytes.len()-8..bytes.len()-4]
             .try_into()
             .ok()?;
 
-        let contest_bytes: [u8; 4] = bytes[bytes.len()-4..]
+        let choice_bytes: [u8; 4] = bytes[bytes.len()-4..]
             .try_into()
             .ok()?;
         
         Some(Self::new(
-            u32::from_be_bytes(choice_bytes),
-            u32::from_be_bytes(contest_bytes)
+            u32::from_be_bytes(contest_bytes),
+            u32::from_be_bytes(choice_bytes)
         ))
     }
     
     /// converts vote to scalar for Pedersen commitment (bijective)
-    /// vote is encoded as: choice || contest (8 bytes total)
+    /// vote is encoded as: contest || choice (8 bytes total)
     /// this is always < p256 order (~32 bytes), so no reduction needed
     pub fn to_scalar(&self) -> Scalar {
         let bytes = self.to_bytes(); // 8 bytes total

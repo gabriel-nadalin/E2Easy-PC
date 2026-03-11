@@ -1,5 +1,5 @@
 [package]
-name = "mixnet-rust"
+name = "e2easy-pc"
 version = "0.1.0"
 edition = "2024"
 
@@ -20,6 +20,3 @@ serde = { version = "1.0.228", features = ["derive"] }
 rayon = "1.11.0"
 safer-ffi = { version = "0.1.13", features = ["headers"] }
 serde_json_canonicalizer = "0.3.2"
-
-[features]
-headers = ["safer-ffi/headers"]

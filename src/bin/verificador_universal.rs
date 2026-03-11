@@ -1,8 +1,8 @@
-use mixnet_rust::Element;
-use mixnet_rust::io_helpers::read_json;
-use mixnet_rust::pedersen::Pedersen;
-use mixnet_rust::types::*;
-use mixnet_rust::utils::hash2str;
+use e2easy_pc::Element;
+use e2easy_pc::io_helpers::read_json;
+use e2easy_pc::pedersen::Pedersen;
+use e2easy_pc::types::*;
+use e2easy_pc::utils::hash2str;
 use p256::ecdsa::Signature;
 use p256::ecdsa::signature::Verifier;
 
@@ -61,7 +61,7 @@ fn main() {
 
     println!("Verificando prova de embaralhamento");
 
-    let verifier = mixnet_rust::verifier::Verifier::new(h_list);
+    let verifier = e2easy_pc::verifier::Verifier::new(h_list);
     assert!(verifier.check_proof(&pi, &commit_list, commit_prime_list));
 
     println!("Verificando abertura dos compromissos");

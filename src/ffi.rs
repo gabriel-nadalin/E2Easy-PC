@@ -13,7 +13,14 @@ pub struct JsonResult {
 
 #[ffi_export]
 fn e2easy_new() -> Option<repr_c::Box<E2Easy>> {
-    let election_config: ElectionConfig = read_json("./config/election_config.json").ok()?;
+    let election_config: ElectionConfig = match read_json("./config/election_config.json") {
+        Ok(cfg) => cfg,
+        Err(e) => {
+            eprintln!("e2easy_new: failed to read config: {e}");
+            return None;
+        }
+    };
+
     let (h, h_list) = (election_config.crypto.h, election_config.crypto.h_list);
     Some(Box::new(E2Easy::new(&h, h_list.to_vec())).into())
 }
@@ -33,7 +40,7 @@ fn e2easy_vote(
         Ok(v) => v,
         Err(e) => return JsonResult {
             success: false,
-            data: format!("Invalid votes JSON: {}", e).try_into().unwrap(),
+            data: format!("Invalid votes JSON: {e}").try_into().unwrap(),
         }
     };
     

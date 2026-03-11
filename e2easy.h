@@ -7,8 +7,8 @@
  *                                         *
  *******************************************/
 
-#ifndef __RUST_MIXNET_RUST__
-#define __RUST_MIXNET_RUST__
+#ifndef __RUST_E2EASY_PC__
+#define __RUST_E2EASY_PC__
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -68,4 +68,4 @@ json_result_free (
 } /* extern \"C\" */
 #endif
 
-#endif /* __RUST_MIXNET_RUST__ */
+#endif /* __RUST_E2EASY_PC__ */

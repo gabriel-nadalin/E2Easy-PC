@@ -1,4 +1,4 @@
-use mixnet_rust::{
+use e2easy_pc::{
     e2easy::E2Easy,
     io_helpers::{read_json, write_json_to_file},
     pedersen::Pedersen, types::*,

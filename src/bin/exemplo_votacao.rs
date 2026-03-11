@@ -1,4 +1,4 @@
-use mixnet_rust::{e2easy::E2Easy, io_helpers::{read_json, request_user_input, write_json_to_file}, types::*};
+use e2easy_pc::{e2easy::E2Easy, io_helpers::{read_json, request_user_input, write_json_to_file}, types::*};
 
 const CHALLENGE: &str = "2";
 // const CAST: &str = "1";

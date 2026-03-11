@@ -8,7 +8,7 @@ N = [100, 200, 300, 400, 500]
 REPS = 10  # number of executions per N to average
 
 # Paths
-CRATE = Path(__file__).resolve().parents[1] / 'mixnet-rust'  # /home/gabriel/tcc/mixnet-rust
+CRATE = Path(__file__).resolve().parents[1] / 'e2easy-pc'  # /home/gabriel/tcc/e2easy-pc
 BIN = CRATE / 'target' / 'release' / 'main'
 CSV_OUT = Path(__file__).resolve().parents[1] / 'cycles_raw.csv'
 CYCLES_FIG = Path(__file__).resolve().parents[1] / 'cycles.pdf'

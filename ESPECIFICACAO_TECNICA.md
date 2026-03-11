@@ -1,6 +1,6 @@
-# Representações Canônicas JSON
+# Especificação Criptográfica e Formatos
 
-Este documento especifica as representações JSON do sistema `mixnet-rust` com conformidade obrigatória a **RFC 8785** para todas operações criptográficas (hash e assinatura).
+Este documento especifica formatos e entradas criptográficas do sistema `e2easy-pc`, com conformidade obrigatória à **RFC 8785** para operações de hash e assinatura.
 
 ## RFC 8785: Canonicalização
 
@@ -20,9 +20,9 @@ Esta transformação é usada para calcular os compromissos de Pedersen e o cód
 
 ### `Vote -> bytes (8 bytes)`
 - Ordem dos campos conforme implementação atual de `Vote::to_bytes()`:
-	- 4 bytes big-endian de `choice`
 	- 4 bytes big-endian de `contest`
-- Forma: `choice || contest`
+	- 4 bytes big-endian de `choice`
+- Forma: `contest || choice`
 
 ### `bytes -> Scalar (32 bytes)`
 - O vetor de 8 bytes é preenchido à esquerda com zeros até 32 bytes.
@@ -33,13 +33,40 @@ Esta transformação é usada para calcular os compromissos de Pedersen e o cód
 - Obtém-se os 32 bytes do escalar.
 - Extraem-se os últimos 8 bytes (`[24..32]`).
 - Reconstrói-se `Vote` lendo:
-	- `choice`: primeiros 4 bytes desse bloco
-	- `contest`: últimos 4 bytes desse bloco
+	- `contest`: primeiros 4 bytes desse bloco
+	- `choice`: últimos 4 bytes desse bloco
 
 ### Exemplo
 Para `choice = 3` e `contest = 1`:
-- `Vote::to_bytes()` = `00000003 00000001`
-- Padding para 32 bytes = `0000000000000000000000000000000000000000000000000000000300000001`
+- `Vote::to_bytes()` = `00000001 00000003`
+- Padding para 32 bytes = `0000000000000000000000000000000000000000000000000000000100000003`
+
+## Derivação determinística de nonces
+
+Usada para gerar nonces reprodutíveis a partir de uma `seed`.
+
+- Entrada: `seed: Scalar`, `count: usize`
+- Saída: `Vec<Scalar>` com `count` elementos
+- Regra: para cada `i` em `0..count`, `nonce_i = hash2scalar((seed, i))`
+- Caso limite: se `count = 0`, retorna vetor vazio
+
+### Serialização para hash
+- A tupla `(seed, i)` é serializada em JSON canônico (RFC 8785) antes do SHA-256.
+- `i` é serializado como número inteiro JSON.
+
+### Exemplo de entrada canônica (forma)
+```json
+["<SEED_HEX>",0]
+```
+
+### Observação
+- `hash2scalar` converte o digest para escalar por redução modular no campo da curva.
+
+### Propriedades de segurança (essenciais)
+- Determinismo: mesma `seed` e mesmo `count` geram exatamente a mesma sequência.
+- Separação por índice: para uma `seed` fixa, cada `i` produz um nonce específico da posição.
+- Reprodutibilidade para auditoria: terceiros podem recomputar os nonces se a `seed` for conhecida.
+- Recomendação operacional: não reutilizar a mesma `seed` em contextos criptográficos distintos.
 
 ## Arquivos emitidos
 
@@ -75,14 +102,14 @@ Para `choice = 3` e `contest = 1`:
 
 ## Entradas de hash
 
-### Tracking code (`E2Easy::vote`)
+### Código de rastreio (`E2Easy::vote`)
 ```json
 ["A9C8563BF45F...","2026-03-05T02:09:25.467237740+00:00",["03EFCDAB4451...","0282BAF46ED1..."]]
 ```
 
 Tupla com 3 elementos: `(prev_tracking_code, timestamp, committed_votes)`.
 
-### Head/CLOSE (`E2Easy::tally`)
+### Fechamento (`E2Easy::tally`)
 ```json
 ["A9C8563BF45F...","CLOSE"]
 ```
